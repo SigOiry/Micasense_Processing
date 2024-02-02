@@ -32,7 +32,7 @@ require(terra)
 
 <img src="img/Bandswv.png" width="100%" align="left" style="padding-right:10px;background-color:white;"/>
 
-The dual-MX camera have a spectral resolution of 10 bands, ranging from the blue (444nm) to the NIR (840nm). The following code is used to find the path of each individual image, to identify each band of each image and to extract all the metadata that will be needed.
+The dual-MX camera have a spectral resolution of 10 bands, ranging from the blue (444nm) to the NIR (840nm). The following code is used to find the path of each individual image, to identify each band and to extract all the metadata that will be needed.
 
 ```{r}
 #| echo: true
@@ -50,19 +50,61 @@ image_df<-"Dual_MX_Images" %>%
 
 meta <-data.frame(
   Image_name = image_df$image_name,
+  Image_Path = image_df$path,
   Make = NA,
   Model = NA,
-  Software = NA
+  Exposure_Time = NA,
+  Gain = NA,
+  Resolution = NA,
+  Band_Name = NA,
+  Central_Wavelength = NA,
+  Band_Width = NA,
+  Capture_ID = NA,
+  Flight_ID = NA,
+  Focal_Length = NA,
+  Black_Level = NA,
+  Radiometric_Calibration_a1 = NA,
+  Radiometric_Calibration_a2 = NA,
+  Radiometric_Calibration_a3 = NA
 )
 
 for (i in 1:nrow(image_df)){
   exif<-exif_read(image_df$path[i])
+  
+  meta$Make[i]<-exif$Make
+  meta$Model[i]<-exif$Model
+  meta$Exposure_Time[i]<-exif$ExposureTime
+  meta$Gain[i]<-exif$ISOSpeed
+  meta$Resolution[i]<-paste0(exif$ImageWidth,"x",exif$ImageHeight)
+  meta$Band_Name[i]<-exif$BandName
+  meta$Central_Wavelength[i]<-exif$CentralWavelength
+  meta$Band_Width[i]<-exif$WavelengthFWHM
+  meta$Capture_ID[i]<-exif$CaptureId
+  meta$Flight_ID[i]<-exif$FlightId
+  meta$Focal_Length[i]<-exif$FocalLength
+  meta$Black_Level[i]<-mean(as.numeric(str_split(exif$BlackLevel," " )[[1]]))
+  meta$Radiometric_Calibration_a1[i]<-as.numeric(exif$RadiometricCalibration[[1]][1])
+  meta$Radiometric_Calibration_a2[i]<-as.numeric(exif$RadiometricCalibration[[1]][2])
+  meta$Radiometric_Calibration_a3[i]<-as.numeric(exif$RadiometricCalibration[[1]][3])
 }
-# 
-# exif<-exif_read(img)
-# 
-# 
-# exif$Make
-
-
 ```
+
+|    Name of metadata     |                      Description                       |    Unit    | Comments                                                                                                                                                                                                                                                                                                 |
+|:----------------:|:----------------:|:----------------:|------------------|
+|          Make           |               Manufacturer of the Camera               |            |                                                                                                                                                                                                                                                                                                          |
+|          Model          |                  Model of the camera                   |            |                                                                                                                                                                                                                                                                                                          |
+|      Exposure_Time      |              Exposure time of the picture              |   Second   |                                                                                                                                                                                                                                                                                                          |
+|          Gain           |               Gain applied to the image                |  Unitless  |                                                                                                                                                                                                                                                                                                          |
+|       Resolution        |                Resolution of the image                 |   pixels   |                                                                                                                                                                                                                                                                                                          |
+|        Band_Name        |                    Name of the Band                    |            |                                                                                                                                                                                                                                                                                                          |
+|   Central_Wavelength    |             Central wavelength of the band             | Nanometer  |                                                                                                                                                                                                                                                                                                          |
+|       Band_Width        |       Full Width Half Maximum (FWHM) of the band       | Nanometer  |                                                                                                                                                                                                                                                                                                          |
+|       Capture_ID        |         Unique ID of all the band of the image         |            |                                                                                                                                                                                                                                                                                                          |
+|        Flight_ID        |        Unique ID of all the image of the flight        |            |                                                                                                                                                                                                                                                                                                          |
+|      Focal_Length       |           Focal length of the optical system           | millimeter |                                                                                                                                                                                                                                                                                                          |
+|       Black_Level       |                    darkPixel value                     |     DN     | Average of 4 values. These values come from optically-covered pixels on the imager which are exposed at the same time as the image pixels. They measure the small amount of random charge generation in each pixel, independent of incoming light, which is common to all semiconductor imaging devices. |
+| Radiometric_Calibration | Optical parameter used for the row gradient correction |            | imager-specific calibrations                                                                                                                                                                                                                                                                             |
+|                         |                                                        |            |                                                                                                                                                                                                                                                                                                          |
+|                         |                                                        |            |                                                                                                                                                                                                                                                                                                          |
+
+: Description of the metadata extracted from micasense images

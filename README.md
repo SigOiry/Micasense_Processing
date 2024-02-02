@@ -120,3 +120,5 @@ for (i in 1:nrow(image_df)){
 | Radiometric_Calibration | Optical parameter used for the row gradient correction |            |                                                                                                                                       imager-specific calibrations                                                                                                                                       |
 
 Description of the metadata extracted from micasense images
+
+## Vignetting correction

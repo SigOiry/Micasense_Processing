@@ -12,7 +12,13 @@ been written in Python.
 The dual-MX camera have a spectral resolution of 10 bands, ranging from
 the blue (444nm) to the NIR (840nm).
 
-## Packages
+coucou
+
+coucou
+
+coucou
+
+coucou \## Packages
 
 The first thing to do is to ensure that all the packages are ready to be
 used. The [exiftoolr](https://github.com/JoshOBrien/exiftoolr) packages

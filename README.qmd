@@ -28,7 +28,7 @@ require(exiftoolr)
 require(terra)
 ```
 
-## Locate images
+## Locate images and Reading metadata used to orthorectify, calibrate and align images
 
 <img src="img/Bandswv.png" width="100%" align="left" style="padding-right:10px;background-color:white;"/>
 
@@ -47,15 +47,6 @@ image_df<-"Dual_MX_Images" %>%
   mutate(image_name = gsub(".*/","",path),
          image_ID = substr(image_name,5,8),
          Band = paste0("B",gsub(".*_","",image_name) %>% gsub(".tif","",.))) 
-```
-
-## Reading metadata used to orthorectify, calibrate and align images
-
-```{r Reading metadata}
-#| echo: true
-#| warning: false
-#| eval: true
-#| code-fold: true
 
 meta <-data.frame(
   Image_name = image_df$image_name,
@@ -67,9 +58,11 @@ meta <-data.frame(
 for (i in 1:nrow(image_df)){
   exif<-exif_read(image_df$path[i])
 }
-
+# 
 # exif<-exif_read(img)
 # 
 # 
 # exif$Make
+
+
 ```

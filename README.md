@@ -25,7 +25,7 @@ require(terra)
 
 </details>
 
-## Locate images
+## Locate images and Reading metadata used to orthorectify, calibrate and align images
 
 <img src="img/Bandswv.png" width="100%" align="left" style="padding-right:10px;background-color:white;"/>
 
@@ -45,16 +45,7 @@ image_df<-"Dual_MX_Images" %>%
   mutate(image_name = gsub(".*/","",path),
          image_ID = substr(image_name,5,8),
          Band = paste0("B",gsub(".*_","",image_name) %>% gsub(".tif","",.))) 
-```
 
-</details>
-
-## Reading metadata used to orthorectify, calibrate and align images
-
-<details>
-<summary>Code</summary>
-
-``` r
 meta <-data.frame(
   Image_name = image_df$image_name,
   Make = NA,
@@ -65,7 +56,7 @@ meta <-data.frame(
 for (i in 1:nrow(image_df)){
   exif<-exif_read(image_df$path[i])
 }
-
+# 
 # exif<-exif_read(img)
 # 
 # 

@@ -10,8 +10,11 @@ editor: visual
 editor_options: 
   chunk_output_type: console
 ---
+<img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;" />
 
-This workflow is an adaptation of the micasense workflow to process manually images coming from the micasense RedEdge-MX Dual camera. The original workflow can be found [here](https://github.com/micasense/imageprocessing) and has originally been written in Python.
+This workflow is an adaptation of the micasense workflow to process manually images coming from the micasense RedEdge-MX Dual camera. The original workflow can be found [here](https://github.com/micasense/imageprocessing) and has originally been written in Python. 
+
+The dual-MX camera have a spectral resolution of 10 bands, ranging from the blue (444nm) to the NIR (840nm).
 
 ## Packages
 
@@ -29,8 +32,6 @@ require(terra)
 ```
 
 ## Locate images and Reading metadata used to orthorectify, calibrate and align images
-
-[![Specification of the micasense RedEdge-MX Dual camera.](img/Bandswv.png){align="left" style="padding-right:10px;background-color:white;" width="100%"}](https://doi.org/10.3389/fmars.2021.722698)
 
 The dual-MX camera have a spectral resolution of 10 bands, ranging from the blue (444nm) to the NIR (840nm). The following code is used to find the path of each individual image, to identify each band and to extract all the metadata that will be needed.
 

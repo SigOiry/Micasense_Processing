@@ -1,9 +1,8 @@
 ---
 title: "Main"
 author: "Simon Oiry"
-# format: html
+format: gfm
 editor: visual
-output: github_document
 ---
 
 # Micasense RedEdge-MX DUAL processing

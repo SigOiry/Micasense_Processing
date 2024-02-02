@@ -27,6 +27,11 @@ require(terra)
 
 ## Locate images
 
+<img src="img/Bandswv.png" width="400px" height="200px" align="left" style="padding-right:10px;background-color:white;" />
+
+The dual-MX camera have a spectral resolution of 10 bands, ranging from
+the blue (444nm) to the NIR (840nm).
+
 <details>
 <summary>Code</summary>
 

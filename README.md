@@ -1,24 +1,36 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-<img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;" />
+This workflow adapts the Micasense workflow for manual processing of
+images from the Micasense RedEdge-MX Dual camera. he original workflow,
+written in Python, is available
+[here](https://github.com/micasense/imageprocessing). This repository
+aims to translate the Python workflow into an R workflow. The python
+workflow is no longer maintained and requires specific versions of each
+package to function correctly. Don’t enjoy spending hours just setting
+up your Python environment? This repo is made for you!
 
-This workflow is an adaptation of the micasense workflow to process
-manually images coming from the micasense RedEdge-MX Dual camera. The
-original workflow can be found
-[here](https://github.com/micasense/imageprocessing) and has originally
-been written in Python.
+The original aims of micasense when they created this processing
+workflow was to help researchers and developers to do their own image
+processing. While a number of commercial tools fully support processing
+MicaSense data into reflectance maps, there are a number of reasons to
+process your own data, including controlling the entire radiometric
+workflow (for academic or publication reasons), pre-processing images to
+be used in a non-radiometric photogrammetry suite, or processing single
+sets of 10 images without building a larger map.
+
+I will personally use this workflow to process single static images,
+where the usual structure-from-motion photogrammetry technique cannot be
+used.
+
+## Dual-MX Sensor
+
+<img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;" />
 
 The dual-MX camera have a spectral resolution of 10 bands, ranging from
 the blue (444nm) to the NIR (840nm).
 
-coucou
-
-coucou
-
-coucou
-
-coucou \## Packages
+## Packages
 
 The first thing to do is to ensure that all the packages are ready to be
 used. The [exiftoolr](https://github.com/JoshOBrien/exiftoolr) packages
@@ -38,10 +50,8 @@ require(terra)
 
 ## Locate images and Reading metadata used to orthorectify, calibrate and align images
 
-The dual-MX camera have a spectral resolution of 10 bands, ranging from
-the blue (444nm) to the NIR (840nm). The following code is used to find
-the path of each individual image, to identify each band and to extract
-all the metadata that will be needed.
+The code is used to find the path for each individual image, identify
+each band, and extract all the necessary metadata.
 
 <details>
 <summary>Code</summary>

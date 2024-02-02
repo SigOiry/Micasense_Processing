@@ -1,7 +1,7 @@
 ---
 title: "Main"
 author: "Simon Oiry"
-format: html
+# format: html
 editor: visual
 output: github_document
 ---

@@ -23,9 +23,7 @@ I will personally use this workflow to process single static images,
 where the usual structure-from-motion photogrammetry technique cannot be
 used.
 
-## Dual-MX Sensor
-
-<img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;" />
+## Dual-MX Sensor <img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;" />
 
 The dual-MX camera have a spectral resolution of 10 bands, ranging from
 the blue (444nm) to the NIR (840nm).

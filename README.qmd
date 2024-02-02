@@ -1,7 +1,11 @@
 ---
 title: "Micasense RedEdge-MX DUAL processing"
 author: "Simon Oiry"
-format: gfm
+format: 
+   gfm:
+     html-math-method: 
+       method: webtex
+       url: https://latex.codecogs.com/png.image?%5Cbg_black&space;
 editor: visual
 ---
 
@@ -11,7 +15,7 @@ This workflow is an adaptation of the micasense workflow to process manually ima
 ## Packages 
 
 ```{r Packages}
-
+require(tidyverse)
 
 
 ```

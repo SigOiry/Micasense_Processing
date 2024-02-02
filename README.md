@@ -4,24 +4,28 @@ Simon Oiry
 This workflow is an adaptation of the micasense workflow to process
 manually images coming from the micasense RedEdge-MX Dual camera. The
 original workflow can be found
-here\[https://github.com/micasense/imageprocessing\] and has originally
+[here](https://github.com/micasense/imageprocessing) and has originally
 been written in Python.
 
 ## Packages
 
+The first thing to do is to ensure that all the packages are ready to be
+used. The [exiftoolr](https://github.com/JoshOBrien/exiftoolr) packages
+is used to read Exif of tiff files. After installing the package you
+will need to run this line of code : `exiftoolr::install_exiftool()`
+
 ``` r
-require(tidyverse)
+exiftoolr::install_exiftool()
 ```
 
-    Le chargement a nécessité le package : tidyverse
+<details>
+<summary>Code</summary>
 
-    ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-    ✔ dplyr     1.1.3     ✔ readr     2.1.4
-    ✔ forcats   1.0.0     ✔ stringr   1.5.0
-    ✔ ggplot2   3.4.3     ✔ tibble    3.2.1
-    ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
-    ✔ purrr     1.0.2     
-    ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ✖ dplyr::filter() masks stats::filter()
-    ✖ dplyr::lag()    masks stats::lag()
-    ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+``` r
+require(tidyverse)
+require(exiftoolr)
+require(terra)
+require(rstudioapi)
+```
+
+</details>

@@ -27,7 +27,15 @@ require(terra)
 
 ## Locate images and Reading metadata used to orthorectify, calibrate and align images
 
-<img src="img/Bandswv.png" width="100%" align="left" style="padding-right:10px;background-color:white;"/>
+<div>
+
+[<img src="img/Bandswv.png"
+style="padding-right:10px;background-color:white;;width:100.0%"
+data-align="left" />](https://doi.org/10.3389/fmars.2021.722698)
+
+Specification of the micasense RedEdge-MX Dual camera.
+
+</div>
 
 The dual-MX camera have a spectral resolution of 10 bands, ranging from
 the blue (444nm) to the NIR (840nm). The following code is used to find
@@ -91,12 +99,9 @@ for (i in 1:nrow(image_df)){
 
 |    Name of metadata     |                      Description                       |    Unit    |                                                                                                                                                 Comments                                                                                                                                                 |
 |:-----------------------:|:------------------------------------------------------:|:----------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
-|          Make           |               Manufacturer of the Camera               |            |                                                                                                                                                                                                                                                                                                          |
-|          Model          |                  Model of the camera                   |            |                                                                                                                                                                                                                                                                                                          |
 |      Exposure_Time      |              Exposure time of the picture              |   Second   |                                                                                                                                                                                                                                                                                                          |
 |          Gain           |               Gain applied to the image                |  Unitless  |                                                                                                                                                                                                                                                                                                          |
 |       Resolution        |                Resolution of the image                 |   pixels   |                                                                                                                                                                                                                                                                                                          |
-|        Band_Name        |                    Name of the Band                    |            |                                                                                                                                                                                                                                                                                                          |
 |   Central_Wavelength    |             Central wavelength of the band             | Nanometer  |                                                                                                                                                                                                                                                                                                          |
 |       Band_Width        |       Full Width Half Maximum (FWHM) of the band       | Nanometer  |                                                                                                                                                                                                                                                                                                          |
 |       Capture_ID        |         Unique ID of all the band of the image         |            |                                                                                                                                                                                                                                                                                                          |

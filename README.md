@@ -27,26 +27,49 @@ require(terra)
 
 ## Locate images
 
-<img src="img/Bandswv.png" width="400px" height="200px" align="left" style="padding-right:10px;background-color:white;" />
+<img src="img/Bandswv.png" width="100%" align="left" style="padding-right:10px;background-color:white;"/>
 
 The dual-MX camera have a spectral resolution of 10 bands, ranging from
-the blue (444nm) to the NIR (840nm).
+the blue (444nm) to the NIR (840nm). The following code is used to find
+the path of each individual image, to identify each band of each image
+and to extract all the metadata that will be needed.
 
 <details>
 <summary>Code</summary>
 
 ``` r
-require(tidyverse)
-require(exiftoolr)
-require(terra)
-
-image_list<-"Dual_MX_Images" %>% 
+image_df<-"Dual_MX_Images" %>% 
   list.files(recursive = T, full.names = T) %>% 
   as.data.frame() %>% 
   rename(path = ".") %>% 
   mutate(image_name = gsub(".*/","",path),
          image_ID = substr(image_name,5,8),
          Band = paste0("B",gsub(".*_","",image_name) %>% gsub(".tif","",.))) 
+```
+
+</details>
+
+## Reading metadata used to orthorectify, calibrate and align images
+
+<details>
+<summary>Code</summary>
+
+``` r
+meta <-data.frame(
+  Image_name = image_df$image_name,
+  Make = NA,
+  Model = NA,
+  Software = NA
+)
+
+for (i in 1:nrow(image_df)){
+  exif<-exif_read(image_df$path[i])
+}
+
+# exif<-exif_read(img)
+# 
+# 
+# exif$Make
 ```
 
 </details>

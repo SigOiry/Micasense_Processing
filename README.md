@@ -211,16 +211,16 @@ The output of `vignette_map()` should give something looking like that :
 <img src="Output/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
 
 To correct the original image, we simply need to multiply the image by
-the vignetting map. It’s not that obvious, but on the plot below,
-corners of the corrected images (right) are brighter than those of the
-Raw image (left)
+the vignetting map. While it may not be immediately obvious, in the plot
+below, the corners of the corrected images (right) are brighter than
+those of the raw image (left).
 
 <img src="README_files/figure-commonmark/fig-compareVignette-1.png"
 id="fig-compareVignette" style="width:100.0%"
 alt="Figure 1: Comparison of a RAW image (left) and an images corrected from the vigneting (right)" />
 
-The following line of code are just a loop in order to correct all
-images present in the Dual_MX_Images folder.
+The following code is a loop designed to correct all images present in
+the Dual_MX_Images folder.
 
 <details>
 <summary>Code</summary>

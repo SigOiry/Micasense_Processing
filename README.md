@@ -41,6 +41,7 @@ will need to run this line of code : `exiftoolr::install_exiftool()`.
 require(tidyverse)
 require(exiftoolr)
 require(terra)
+library(polynom)
 ```
 
 </details>
@@ -64,6 +65,7 @@ image_df<-"Dual_MX_Images" %>%
 
 meta <-data.frame(
   Image_name = image_df$image_name,
+  Unique_ID = NA,
   Image_Path = image_df$path,
   Make = NA,
   Model = NA,
@@ -108,7 +110,7 @@ for (i in 1:nrow(image_df)){
   meta$Vignetting_Center_Y[i]<-as.numeric(exif$VignettingCenter[[1]][1])
   meta$Vignetting_Center_y[i]<-as.numeric(exif$VignettingCenter[[1]][2])
   meta$Vignetting_Polynomial[i]<-c(exif$VignettingPolynomial)
-
+  meta$Unique_ID[i]<-paste(sep = "_",meta$Capture_ID[i],meta$Central_Wavelength[i])
 }
 ```
 
@@ -130,3 +132,62 @@ for (i in 1:nrow(image_df)){
 Description of the metadata extracted from micasense images
 
 ## Vignetting correction
+
+Vignetting refers to the reduction of image brightness toward the
+periphery compared to the image center, a phenomenon due to the lens
+properties of the camera. Before converting each image to radiance, the
+digital numbers need to be corrected for this vignetting effect.
+
+<details>
+<summary>Code</summary>
+
+``` r
+vignette_map<- function(img){
+  
+  if(typeof(img) == "S4"){
+    img<-gsub(paste0(getwd(),"/"),"",sources(img))
+  }
+  
+  metadata<-exif_read(img)
+  x_dim <-metadata$ImageWidth
+  y_dim <-metadata$ImageHeight
+  # get vignette center
+  x_vignette <- metadata$VignettingCenter[[1]][1]
+  y_vignette <- metadata$VignettingCenter[[1]][2]
+
+  # get vignette polynomial
+  nvignette_poly <- length(metadata$VignettingPolynomial[[1]])
+  vignette_poly <- (metadata$VignettingPolynomial[[1]]) %>% 
+    as.polynomial()
+  
+  # perform vignette correction
+  # get coordinate grid across image
+  
+  x = matrix(rep(seq(1:x_dim),y_dim), nrow = y_dim, byrow = TRUE)
+  y = matrix(rep(seq(1:y_dim),x_dim),ncol = x_dim)
+  
+  
+  # compute matrix of distances from image center
+  
+  
+  for(i in 1:length(x)){
+  a<-sqrt(((x[i]-x_vignette)^2)+((y[i]-y_vignette)^2))
+    if(i== 1){
+      dist_list<-a
+    }else{
+       dist_list<-dist_list %>% append(a)
+    }
+  }
+  
+  dist<-matrix(dist_list, ncol = x_dim,nrow = y_dim)
+  
+  vignette <-1+ predict(vignette_poly,as.vector(dist))
+  
+  test<-matrix(vignette, ncol = x_dim, nrow = y_dim)
+  
+  
+  plot(rast(test))
+}
+```
+
+</details>

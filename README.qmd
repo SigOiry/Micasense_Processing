@@ -185,5 +185,8 @@ vignette_map<- function(img){
 
 ```
 
+```{r}
+plot(rast(test))
+```
 
 

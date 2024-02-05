@@ -42,6 +42,7 @@ require(tidyverse)
 require(tidyterra)
 require(exiftoolr)
 require(terra)
+require(patchwork)
 ```
 
 </details>
@@ -190,17 +191,17 @@ vignette_map<- function(img){
 
 ### Plot an example of vignetting map : 
 
-img_example<-meta$Image_Path[1]
-vignette_map_exemple<-vignette_map(img_example)
-
-plot_exemple<-ggplot() +
-  geom_spatraster(data = vignette_map_exemple, aes(fill = lyr.1))+
-   scale_fill_viridis_c()+
-  labs(fill = "Correction factor")+
-  theme_bw()+
-  theme(legend.position = "top")
-
-ggsave("export/plot/exemple_vignetting.png", plot_exemple, width = 10, height = 10)
+# img_example<-meta$Image_Path[1]
+# vignette_map_exemple<-vignette_map(img_example)
+# 
+# plot_exemple<-ggplot() +
+#   geom_spatraster(data = vignette_map_exemple, aes(fill = lyr.1))+
+#    scale_fill_viridis_c()+
+#   labs(fill = "Correction factor")+
+#   theme_bw()+
+#   theme(legend.position = "top")
+# 
+# ggsave("export/plot/exemple_vignetting.png", plot_exemple, width = 10, height = 10)
 ```
 
 </details>
@@ -211,3 +212,7 @@ The output of `vignette_map()` should give something looking like that :
 
 To correct the original image, we simply need to multiply the image by
 the vignetting map.
+
+<img src="README_files/figure-commonmark/fig-compareVignette-1.png"
+id="fig-compareVignette" style="width:100.0%"
+alt="Figure 1: Comparison of a RAW image (left) and an images corrected from the vigneting (right)" />

@@ -211,7 +211,9 @@ The output of `vignette_map()` should give something looking like that :
 <img src="export/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
 
 To correct the original image, we simply need to multiply the image by
-the vignetting map.
+the vignetting map. It’s not that obvious, but on the plot below,
+corners of the corrected images (right) are brighter than those of the
+Raw image (left)
 
 <img src="README_files/figure-commonmark/fig-compareVignette-1.png"
 id="fig-compareVignette" style="width:100.0%"

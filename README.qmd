@@ -201,7 +201,7 @@ The output of `vignette_map()` should give something looking like that :
 <img src="export/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
 
 
-To correct the original image, we simply need to multiply the image by the vignetting map.
+To correct the original image, we simply need to multiply the image by the vignetting map. It's not that obvious, but on the plot below, corners of the corrected images (right) are brighter than those of the Raw image (left)
 
 ```{r}
 #| cache: false
@@ -210,41 +210,48 @@ To correct the original image, we simply need to multiply the image by the vigne
 #| fig-cap: Comparison of a RAW image (left) and an images corrected from the vigneting (right)
 #| label: fig-compareVignette
 #| fig-width: 10
-#| fig-height: 5
+#| fig-height: 4
 #| out-width: "100%"
 
 img_raw<-rast("Dual_MX_Images/Blue/IMG_0002_6.tif")
-names(img_raw)<-"value"
+names(img_raw)<-"value1"
 img_vignette_map <- vignette_map(img_raw)
 img_corrected <- img_raw*img_vignette_map
-names(img_corrected)<-"value"
+names(img_corrected)<-"value2"
 
 RAW_plot<-ggplot()+
-  geom_spatraster(data = img_raw, aes(fill = value))+
+  geom_spatraster(data = img_raw, aes(fill = value1))+
   labs(fill = "DN")+
   scale_fill_gradientn(
     colours = grey(0:100 / 100),
     na.value = "transparent",
     trans = "sqrt"
   )+
-  theme_bw()+
+  geom_text(aes(x = 1000, y =800 , label = "Raw image"),
+            color = "white",
+            size = 5)+
+  theme_void()+
   theme(legend.position = "none")+
   coord_equal()
 
+
 Corrected_plot <- ggplot()+
-  geom_spatraster(data = img_corrected, aes(fill = value))+
+  geom_spatraster(data = img_corrected, aes(fill = value2))+
   labs(fill = "DN")+
   scale_fill_gradientn(
     colours = grey(0:100 / 100),
     na.value = "transparent",
     trans = "sqrt"
   )+
-  theme_bw()+
-  theme(legend.position = "top")+
+  geom_text(aes(x = 930, y =800 , label = "Corrected image"),
+            color = "white",
+            size = 5)+
+  theme_void()+
+  theme(legend.position = "none")+
   coord_equal()
   
-RAW_plot+Corrected_plot
-
+a<-RAW_plot+Corrected_plot
+a
 
 ```
 

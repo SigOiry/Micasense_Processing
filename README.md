@@ -1,6 +1,8 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
+**WORK IN PROGRESS (last update : 2024-02-05)**
+
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
 written in Python, is available
@@ -237,3 +239,5 @@ for(i in 1:length(img_list)){
 ```
 
 </details>
+
+## Row Gradient correction

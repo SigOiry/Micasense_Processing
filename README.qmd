@@ -32,9 +32,10 @@ The first thing to do is to ensure that all the packages are ready to be used. T
 #| code-fold: true
 
 require(tidyverse)
+require(tidyterra)
 require(exiftoolr)
 require(terra)
-library(polynom)
+
 ```
 
 
@@ -128,6 +129,7 @@ for (i in 1:nrow(image_df)){
 
 Vignetting refers to the reduction of image brightness toward the periphery compared to the image center, a phenomenon due to the lens properties of the camera. Before converting each image to radiance, the digital numbers need to be corrected for this vignetting effect.
 
+The function `vignette_map()` takes a `spatRaster` object or the path to a TIFF file as input and outputs the vignetting map of this image :
 
 ```{r}
 #| echo: true
@@ -150,8 +152,13 @@ vignette_map<- function(img){
 
   # get vignette polynomial
   nvignette_poly <- length(metadata$VignettingPolynomial[[1]])
-  vignette_poly <- (metadata$VignettingPolynomial[[1]]) %>% 
-    as.polynomial()
+  vignette_poly_coef <- ((metadata$VignettingPolynomial[[1]]))
+  
+  vignette_poly<-function(dist,vignette_poly_coef = vignette_poly_coef){
+    x <- vignette_poly_coef[6]*dist^6+vignette_poly_coef[5]*dist^5+vignette_poly_coef[4]*dist^4+vignette_poly_coef[3]*dist^3+vignette_poly_coef[2]*dist^2+vignette_poly_coef[1]*dist+1
+    return(x)
+  }
+  
   
   # perform vignette correction
   # get coordinate grid across image
@@ -162,31 +169,40 @@ vignette_map<- function(img){
   
   # compute matrix of distances from image center
   
-  
-  for(i in 1:length(x)){
-  a<-sqrt(((x[i]-x_vignette)^2)+((y[i]-y_vignette)^2))
-    if(i== 1){
-      dist_list<-a
-    }else{
-       dist_list<-dist_list %>% append(a)
-    }
-  }
-  
+  dist_list<-sqrt(((as.vector(x)-x_vignette)^2)+((as.vector(y)-y_vignette)^2))
   dist<-matrix(dist_list, ncol = x_dim,nrow = y_dim)
   
-  vignette <-1+ predict(vignette_poly,as.vector(dist))
   
-  test<-matrix(vignette, ncol = x_dim, nrow = y_dim)
+  vignette_list <-1/vignette_poly(dist,vignette_poly_coef)
   
-  
-  plot(rast(test))
+  vignette<-rast(matrix(vignette_list, ncol = x_dim, nrow = y_dim))
+
+  return(vignette)
 }
 
+### Plot an example of vignetting map : 
 
+img_example<-meta$Image_Path[1]
+vignette_map_exemple<-vignette_map(img_example)
+
+plot_exemple<-ggplot() +
+  geom_spatraster(data = vignette_map_exemple, aes(fill = lyr.1))+
+   scale_fill_viridis_c()+
+  labs(fill = "Correction factor")+
+  theme_bw()+
+  theme(legend.position = "top")
+
+ggsave("export/plot/exemple_vignetting.png", plot_exemple, width = 10, height = 10)
 ```
 
-```{r}
-plot(rast(test))
-```
+The output of `vignette_map()` should give something looking like that : 
+
+<img src="export/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
+
+
+
+
+To correct the original image, we simply need to multiply the image by the vignetting map.
+
 
 

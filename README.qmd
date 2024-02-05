@@ -11,7 +11,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-This workflow adapts the Micasense workflow for manual processing of images from the Micasense RedEdge-MX Dual camera. he original workflow, written in Python, is available [here](https://github.com/micasense/imageprocessing). This repository aims to translate the Python workflow into an R workflow. The python workflow is no longer maintained and requires specific versions of each package to function correctly. Don't enjoy spending hours just setting up your Python environment? This repo is made for you!
+This workflow adapts the Micasense workflow for manual processing of images from the Micasense RedEdge-MX Dual camera. he original workflow, written in Python, is available [here](https://github.com/micasense/imageprocessing). This repository aims to translate the Python workflow into an R workflow. I'm not really used to code in Python And I thought it can be a good exercise to try to translate this repository in R.
 
 The original aims of micasense when they created this processing workflow was to help researchers and developers to do their own image processing. While a number of commercial tools fully support processing MicaSense data into reflectance maps, there are a number of reasons to process your own data, including controlling the entire radiometric workflow (for academic or publication reasons), pre-processing images to be used in a non-radiometric photogrammetry suite, or processing single sets of 10 images without building a larger map.
 
@@ -35,6 +35,7 @@ require(tidyverse)
 require(exiftoolr)
 require(terra)
 ```
+
 
 ## Locate images and Reading metadata used to orthorectify, calibrate and align images
 
@@ -112,3 +113,6 @@ for (i in 1:nrow(image_df)){
 : Description of the metadata extracted from micasense images
 
 ## Vignetting correction
+
+
+

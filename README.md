@@ -5,10 +5,9 @@ This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
 written in Python, is available
 [here](https://github.com/micasense/imageprocessing). This repository
-aims to translate the Python workflow into an R workflow. The python
-workflow is no longer maintained and requires specific versions of each
-package to function correctly. Don’t enjoy spending hours just setting
-up your Python environment? This repo is made for you!
+aims to translate the Python workflow into an R workflow. I’m not really
+used to code in Python and I thought it can be a good exercise to try to
+translate this repository in R.
 
 The original aims of micasense when they created this processing
 workflow was to help researchers and developers to do their own image
@@ -70,7 +69,8 @@ meta <-data.frame(
   Model = NA,
   Exposure_Time = NA,
   Gain = NA,
-  Resolution = NA,
+  Width = NA,
+  Height = NA,
   Band_Name = NA,
   Central_Wavelength = NA,
   Band_Width = NA,
@@ -80,7 +80,10 @@ meta <-data.frame(
   Black_Level = NA,
   Radiometric_Calibration_a1 = NA,
   Radiometric_Calibration_a2 = NA,
-  Radiometric_Calibration_a3 = NA
+  Radiometric_Calibration_a3 = NA,
+  Vignetting_Center_X = NA,
+  Vignetting_Center_Y = NA,
+  Vignetting_Polynomial = NA
 )
 
 for (i in 1:nrow(image_df)){
@@ -90,7 +93,8 @@ for (i in 1:nrow(image_df)){
   meta$Model[i]<-exif$Model
   meta$Exposure_Time[i]<-exif$ExposureTime
   meta$Gain[i]<-exif$ISOSpeed
-  meta$Resolution[i]<-paste0(exif$ImageWidth,"x",exif$ImageHeight)
+  meta$Width[i]<-exif$ImageWidth
+  meta$Height[i]<-exif$ImageHeight
   meta$Band_Name[i]<-exif$BandName
   meta$Central_Wavelength[i]<-exif$CentralWavelength
   meta$Band_Width[i]<-exif$WavelengthFWHM
@@ -101,6 +105,10 @@ for (i in 1:nrow(image_df)){
   meta$Radiometric_Calibration_a1[i]<-as.numeric(exif$RadiometricCalibration[[1]][1])
   meta$Radiometric_Calibration_a2[i]<-as.numeric(exif$RadiometricCalibration[[1]][2])
   meta$Radiometric_Calibration_a3[i]<-as.numeric(exif$RadiometricCalibration[[1]][3])
+  meta$Vignetting_Center_Y[i]<-as.numeric(exif$VignettingCenter[[1]][1])
+  meta$Vignetting_Center_y[i]<-as.numeric(exif$VignettingCenter[[1]][2])
+  meta$Vignetting_Polynomial[i]<-c(exif$VignettingPolynomial)
+
 }
 ```
 

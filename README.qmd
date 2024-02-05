@@ -11,7 +11,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-This workflow adapts the Micasense workflow for manual processing of images from the Micasense RedEdge-MX Dual camera. he original workflow, written in Python, is available [here](https://github.com/micasense/imageprocessing). This repository aims to translate the Python workflow into an R workflow. I'm not really used to code in Python And I thought it can be a good exercise to try to translate this repository in R.
+This workflow adapts the Micasense workflow for manual processing of images from the Micasense RedEdge-MX Dual camera. he original workflow, written in Python, is available [here](https://github.com/micasense/imageprocessing). This repository aims to translate the Python workflow into an R workflow. I'm not really used to code in Python and I thought it can be a good exercise to try to translate this repository in R.
 
 The original aims of micasense when they created this processing workflow was to help researchers and developers to do their own image processing. While a number of commercial tools fully support processing MicaSense data into reflectance maps, there are a number of reasons to process your own data, including controlling the entire radiometric workflow (for academic or publication reasons), pre-processing images to be used in a non-radiometric photogrammetry suite, or processing single sets of 10 images without building a larger map.
 
@@ -76,9 +76,7 @@ meta <-data.frame(
   Radiometric_Calibration_a3 = NA,
   Vignetting_Center_X = NA,
   Vignetting_Center_Y = NA,
-  Vignetting_Polynomial = NA,
-  Focal_Plane_Resolution_X = NA,
-  Focal_Plane_Resolution_Y = NA
+  Vignetting_Polynomial = NA
 )
 
 for (i in 1:nrow(image_df)){
@@ -103,8 +101,6 @@ for (i in 1:nrow(image_df)){
   meta$Vignetting_Center_Y[i]<-as.numeric(exif$VignettingCenter[[1]][1])
   meta$Vignetting_Center_y[i]<-as.numeric(exif$VignettingCenter[[1]][2])
   meta$Vignetting_Polynomial[i]<-c(exif$VignettingPolynomial)
-  meta$Focal_Plane_Resolution_X[i]<-exif$FocalPlaneXResolution
-  meta$Focal_Plane_Resolution_Y[i]<-exif$FocalPlaneYResolution
 
 }
     

@@ -208,7 +208,7 @@ vignette_map<- function(img){
 
 The output of `vignette_map()` should give something looking like that :
 
-<img src="export/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
+<img src="Output/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
 
 To correct the original image, we simply need to multiply the image by
 the vignetting map. It’s not that obvious, but on the plot below,
@@ -218,3 +218,23 @@ Raw image (left)
 <img src="README_files/figure-commonmark/fig-compareVignette-1.png"
 id="fig-compareVignette" style="width:100.0%"
 alt="Figure 1: Comparison of a RAW image (left) and an images corrected from the vigneting (right)" />
+
+The following line of code are just a loop in order to correct all
+images present in the Dual_MX_Images folder.
+
+<details>
+<summary>Code</summary>
+
+``` r
+img_list<-list.files("Dual_MX_Images", pattern = ".tif",recursive = T,full.names = T)
+
+for(i in 1:length(img_list)){
+  img_raw<-rast(img_list[i])
+  img_map<-vignette_map(img_raw)
+  img_corrected<-img_raw*img_map
+
+  writeRaster(img_corrected, paste0("Output/Vignetting/Vign_",gsub(".*/","",img_list[i])),overwrite = T)
+}
+```
+
+</details>

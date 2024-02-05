@@ -198,7 +198,7 @@ vignette_map<- function(img){
 
 The output of `vignette_map()` should give something looking like that : 
 
-<img src="export/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
+<img src="Output/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
 
 
 To correct the original image, we simply need to multiply the image by the vignetting map. It's not that obvious, but on the plot below, corners of the corrected images (right) are brighter than those of the Raw image (left)
@@ -252,6 +252,25 @@ Corrected_plot <- ggplot()+
   
 a<-RAW_plot+Corrected_plot
 a
+```
+
+The following line of code are just a loop in order to correct all images present in the Dual_MX_Images folder.
+
+```{r}
+#| echo: true
+#| warning: false
+#| eval: false
+#| code-fold: true
+
+img_list<-list.files("Dual_MX_Images", pattern = ".tif",recursive = T,full.names = T)
+
+for(i in 1:length(img_list)){
+  img_raw<-rast(img_list[i])
+  img_map<-vignette_map(img_raw)
+  img_corrected<-img_raw*img_map
+
+  writeRaster(img_corrected, paste0("Output/Vignetting/Vign_",gsub(".*/","",img_list[i])),overwrite = T)
+}
 
 ```
 

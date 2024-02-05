@@ -62,7 +62,8 @@ meta <-data.frame(
   Model = NA,
   Exposure_Time = NA,
   Gain = NA,
-  Resolution = NA,
+  Width = NA,
+  Height = NA,
   Band_Name = NA,
   Central_Wavelength = NA,
   Band_Width = NA,
@@ -72,7 +73,9 @@ meta <-data.frame(
   Black_Level = NA,
   Radiometric_Calibration_a1 = NA,
   Radiometric_Calibration_a2 = NA,
-  Radiometric_Calibration_a3 = NA
+  Radiometric_Calibration_a3 = NA,
+  Vignetting_Center_X = NA,
+  Vignetting_Center_Y = NA
 )
 
 for (i in 1:nrow(image_df)){
@@ -82,7 +85,8 @@ for (i in 1:nrow(image_df)){
   meta$Model[i]<-exif$Model
   meta$Exposure_Time[i]<-exif$ExposureTime
   meta$Gain[i]<-exif$ISOSpeed
-  meta$Resolution[i]<-paste0(exif$ImageWidth,"x",exif$ImageHeight)
+  meta$Width[i]<-exif$ImageWidth
+  meta$Height[i]<-exif$ImageHeight
   meta$Band_Name[i]<-exif$BandName
   meta$Central_Wavelength[i]<-exif$CentralWavelength
   meta$Band_Width[i]<-exif$WavelengthFWHM
@@ -93,8 +97,9 @@ for (i in 1:nrow(image_df)){
   meta$Radiometric_Calibration_a1[i]<-as.numeric(exif$RadiometricCalibration[[1]][1])
   meta$Radiometric_Calibration_a2[i]<-as.numeric(exif$RadiometricCalibration[[1]][2])
   meta$Radiometric_Calibration_a3[i]<-as.numeric(exif$RadiometricCalibration[[1]][3])
+  meta$
 }
-```
+  ```
 
 
 |    Name of metadata     |                      Description                       |    Unit    |                                                                                                                                                 Comments                                                                                                                                                 |

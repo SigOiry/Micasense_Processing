@@ -132,7 +132,7 @@ for (i in 1:nrow(image_df)){
 
 Description of the metadata extracted from micasense images
 
-## Vignetting correction
+## Vignetting correction <img src="Output/plot/exemple_vignetting.png" width="50%" align="left" style="padding-left:10px;background-color:white;" />
 
 Vignetting refers to the reduction of image brightness toward the
 periphery compared to the image center, a phenomenon due to the lens
@@ -141,6 +141,14 @@ digital numbers need to be corrected for this vignetting effect.
 
 The function `vignette_map()` takes a `spatRaster` object or the path to
 a TIFF file as input and outputs the vignetting map of this image :
+
+The output of `vignette_map()` should give something looking the plot on
+the left :
+
+To correct the original image, we simply need to multiply the image by
+the vignetting map. While it may not be immediately obvious, in the plot
+below, the corners of the corrected images (right) are brighter than
+those of the raw image (left).
 
 <details>
 <summary>Code</summary>
@@ -205,15 +213,6 @@ vignette_map<- function(img){
 ```
 
 </details>
-
-The output of `vignette_map()` should give something looking like that :
-
-<img src="Output/plot/exemple_vignetting.png" width="50%" style="padding-left:25%;background-color:white;" />
-
-To correct the original image, we simply need to multiply the image by
-the vignetting map. While it may not be immediately obvious, in the plot
-below, the corners of the corrected images (right) are brighter than
-those of the raw image (left).
 
 <img src="README_files/figure-commonmark/fig-compareVignette-1.png"
 id="fig-compareVignette" style="width:100.0%"

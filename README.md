@@ -247,10 +247,16 @@ Gradient I haven’t been able to find any resources explaining what it
 is, which led me to consult ChatGPT.
 
 It appears there’s a disparity in the amount of light captured at the
-top of the sensor versus what’s recorded at the bottom. Within the
-`XMP:RadiometricCalibration` tag of MicaSense images’ metadata, one can
-find all the necessary information to correct for this row gradient
-effect.
+top of the sensor versus what’s recorded at the bottom.
+
+The row gradient correction applied by MicaSense on raw images before
+processing is a calibration step aimed at compensating for any
+non-uniformities and artifacts that may be present across the rows of
+the sensor in the captured images.
+
+Within the `XMP:RadiometricCalibration` tag of MicaSense images’
+metadata, one can find all the necessary information to correct for this
+row gradient effect.
 
 <details>
 <summary>Code</summary>
@@ -314,3 +320,11 @@ for(i in 1:length(img_list)){
 ```
 
 </details>
+
+## Subtract the dark level and adjust for vignette and row gradient
+
+At this step, we gonna apply at once vignetting, row gradient and dark
+level correction. The dark level correction is aimed at addressing the
+camera sensor’s inherent noise and ensuring the baseline level of the
+image data is accurately set, enhancing image quality and accuracy for
+analysis.

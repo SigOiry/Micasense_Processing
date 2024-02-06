@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-06 16:09:15.253593)**
+**WORK IN PROGRESS (last update : 2024-02-06 21:36:10.035909)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -174,7 +174,12 @@ vignette_map<- function(img){
   vignette_poly_coef <- ((metadata$VignettingPolynomial[[1]]))
   
   vignette_poly<-function(dist,vignette_poly_coef = vignette_poly_coef){
-    x <- vignette_poly_coef[6]*dist^6+vignette_poly_coef[5]*dist^5+vignette_poly_coef[4]*dist^4+vignette_poly_coef[3]*dist^3+vignette_poly_coef[2]*dist^2+vignette_poly_coef[1]*dist+1
+    x <- vignette_poly_coef[6]*dist^6
+    +vignette_poly_coef[5]*dist^5
+    +vignette_poly_coef[4]*dist^4
+    +vignette_poly_coef[3]*dist^3
+    +vignette_poly_coef[2]*dist^2
+    +vignette_poly_coef[1]*dist+1
     return(x)
   }
   

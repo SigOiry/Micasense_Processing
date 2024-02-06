@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-05)**
+**WORK IN PROGRESS (last update : 2024-02-06)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -20,11 +20,11 @@ workflow (for academic or publication reasons), pre-processing images to
 be used in a non-radiometric photogrammetry suite, or processing single
 sets of 10 images without building a larger map.
 
-I will personally use this workflow to process single static images,
+I will personally use this workflow to **process single static images**,
 where the usual structure-from-motion photogrammetry technique cannot be
 used.
 
-## Dual-MX Sensor <img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;" />
+## Dual-MX Sensor <img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
 
 The dual-MX camera have a spectral resolution of 10 bands, ranging from
 the blue (444nm) to the NIR (840nm).
@@ -134,7 +134,7 @@ for (i in 1:nrow(image_df)){
 
 Description of the metadata extracted from micasense images
 
-## Vignetting correction <img src="Output/plot/exemple_vignetting.png" width="50%" align="left" style="padding-left:10px;background-color:white;" />
+## Vignetting correction <img src="Output/plot/exemple_vignetting.png" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
 
 Vignetting refers to the reduction of image brightness toward the
 periphery compared to the image center, a phenomenon due to the lens
@@ -240,4 +240,77 @@ for(i in 1:length(img_list)){
 
 </details>
 
-## Row Gradient correction
+## Row Gradient correction <img src="Output/plot/exemple_RowGradient.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
+
+The next step involves correcting what MicaSense refers to as the Row
+Gradient I haven’t been able to find any resources explaining what it
+is, which led me to consult ChatGPT.
+
+It appears there’s a disparity in the amount of light captured at the
+top of the sensor versus what’s recorded at the bottom. Within the
+`XMP:RadiometricCalibration` tag of MicaSense images’ metadata, one can
+find all the necessary information to correct for this row gradient
+effect.
+
+<details>
+<summary>Code</summary>
+
+``` r
+row_gradient_map<-function(img){
+  
+  if(typeof(img) == "S4"){
+    img<-gsub(paste0(getwd(),"/"),"",sources(img))
+  }
+  
+  exposure_time<-exif_read(img)$ExposureTime
+  RadiometricCalibration <- as.numeric(exif_read(img)$RadiometricCalibration[[1]])
+  
+  x_dim<-exif_read(img)$ImageWidth
+  y_dim<-exif_read(img)$ImageHeight
+  
+  y = as.vector(matrix(rep(seq(1:y_dim),x_dim),ncol = x_dim))
+  
+  
+  R<- 1 / (1 + RadiometricCalibration[2] * y / exposure_time - RadiometricCalibration[3] * y)
+  
+  R<-rast(matrix(R, nrow = y_dim, ncol = x_dim))
+  
+  return(R)
+}
+
+### Plot an example of vignetting map : 
+# 
+# img_example<-meta$Image_Path[1]
+# gradient_map_exemple<-row_gradient_map(img_example)
+# 
+# plot_exemple<-ggplot() +
+#   geom_spatraster(data = gradient_map_exemple, aes(fill = lyr.1))+
+#    scale_fill_viridis_c()+
+#   labs(fill = "Correction factor")+
+#   theme_bw()+
+#   theme(legend.position = "top")
+# 
+ggsave("Output/plot/exemple_RowGradient.png", plot_exemple, width = 10, height = 10)
+```
+
+</details>
+
+The following code is a loop designed to correct all images present in
+the Dual_MX_Images folder.
+
+<details>
+<summary>Code</summary>
+
+``` r
+img_list<-list.files("Dual_MX_Images", pattern = ".tif",recursive = T,full.names = T)
+
+for(i in 1:length(img_list)){
+  img_raw<-rast(img_list[i])
+  img_map<-row_gradient_map(img_raw)
+  img_corrected<-img_raw*img_map
+
+  writeRaster(img_corrected, paste0("Output/Row_Gradient/Row_Grad_",gsub(".*/","",img_list[i])),overwrite = T)
+}
+```
+
+</details>

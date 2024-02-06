@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-06)**
+**WORK IN PROGRESS (last update : 2024-02-06 16:09:15.253593)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -323,11 +323,11 @@ for(i in 1:length(img_list)){
 
 ## Subtract the dark level and adjust for vignette and row gradient
 
-At this step, we gonna apply at once vignetting, row gradient and dark
-level correction. The dark level correction is aimed at addressing the
-camera sensor’s inherent noise and ensuring the baseline level of the
-image data is accurately set, enhancing image quality and accuracy for
-analysis.
+At this stage, we will simultaneously apply vignetting, row gradient,
+and dark level corrections. The purpose of dark level correction is to
+mitigate the camera sensor’s inherent noise and ensure that the baseline
+level of the image data is accurately established. This enhances the
+image quality and accuracy for analysis.
 
 <details>
 <summary>Code</summary>
@@ -348,6 +348,8 @@ img_correction <- function(img){
   
   L = img_vignette*img_rowGradient*(img_raw - DarkLevel) 
   
+  describe(img_raw)
+  
   return(L)
 }
 
@@ -359,6 +361,59 @@ for (i in 1:length(img_list)) {
   
   writeRaster(corrected_img, paste0("Output/RAW/Radiometric_Calibration/All_Corr_",gsub(".*/","",img_list[i])),overwrite = T)
 
+}
+```
+
+</details>
+
+## DN to Radiance
+
+After adjusting the digital numbers for sensor and lens uncertainties,
+we can convert them to radiance to ensure that each image is expressed
+in the same unit (W/m^2/nm/sr). To achieve this, it is necessary to
+retrieve the exposure time and the gain applied to each image. It’s
+important to note that the ISO value stored in the EXIF data must be
+divided by 100. This is because the gain is represented in the
+photographic parameter ISO, with a base ISO of 100. Dividing the ISO
+value by 100 allows us to obtain a numeric gain.
+
+Note also that during this conversion, it’s essential to normalize by
+the image’s bit depth (2^16 for 16-bit images, 2^12 for 12-bit images)
+because the calibration coefficients are designed to work with
+normalized input values. This normalization ensures the coefficients are
+applied correctly across different image bit depths.
+
+**No metadata are saved to the TIFF file by the `terra` package of R……**
+
+<details>
+<summary>Code</summary>
+
+``` r
+DN_to_Radiance<-function(img){
+  
+  if(typeof(img) == "S4"){
+    img_RAW<-img
+    img<-gsub(paste0(getwd(),"/"),"",sources(img))
+  }else{
+    img_RAW<-rast(img)
+  }
+  
+  exposure_time<-exif_read(img)$ExposureTime
+  Gain<-exif_read(img)$ISOSpeed/100
+  bitsPerPixel<-exif_read(img)$BitsPerSample
+  dnMax <- 2**bitsPerPixel
+  a1<- as.numeric(exif_read(img)$RadiometricCalibration[[1]])[1]
+  
+  radianceImage <- img_RAW/(Gain*exposure_time)*a1*dnMax
+  
+  return(radianceImage)
+}
+
+img_path<-list.files("Output/RAW/Radiometric_Calibration",pattern = ".tif", full.names = T)
+
+for(i in 1 : length(img_path)){
+  
+  Image_Radiance<-DN_to_Radiance(img_path[i])
 }
 ```
 

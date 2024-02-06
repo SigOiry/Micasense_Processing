@@ -266,7 +266,7 @@ for(i in 1:length(img_list)){
   img_map<-vignette_map(img_raw)
   img_corrected<-img_raw*img_map
 
-  writeRaster(img_corrected, paste0("Output/Vignetting/Vign_",gsub(".*/","",img_list[i])),overwrite = T)
+  writeRaster(img_corrected, paste0("Output/RAW/Vignetting/Vign_",gsub(".*/","",img_list[i])),overwrite = T)
 }
 
 ```
@@ -296,7 +296,7 @@ row_gradient_map<-function(img){
   exposure_time<-exif_read(img)$ExposureTime
   RadiometricCalibration <- as.numeric(exif_read(img)$RadiometricCalibration[[1]])
   
-  x_dim<-exif_read(img)$ImageWidth
+  x_dim<-exif_read(img)$ImageWidth 
   y_dim<-exif_read(img)$ImageHeight
   
   y = as.vector(matrix(rep(seq(1:y_dim),x_dim),ncol = x_dim))
@@ -321,7 +321,7 @@ row_gradient_map<-function(img){
 #   theme_bw()+
 #   theme(legend.position = "top")
 # 
-ggsave("Output/plot/exemple_RowGradient.png", plot_exemple, width = 10, height = 10)
+# ggsave("Output/plot/exemple_RowGradient.png", plot_exemple, width = 10, height = 10)
 
 ```
 
@@ -340,7 +340,7 @@ for(i in 1:length(img_list)){
   img_map<-row_gradient_map(img_raw)
   img_corrected<-img_raw*img_map
 
-  writeRaster(img_corrected, paste0("Output/Row_Gradient/Row_Grad_",gsub(".*/","",img_list[i])),overwrite = T)
+  writeRaster(img_corrected, paste0("Output/RAW/Row_Gradient/Row_Grad_",gsub(".*/","",img_list[i])),overwrite = T)
 }
 
 ```
@@ -348,4 +348,41 @@ for(i in 1:length(img_list)){
 ## Subtract the dark level and adjust for vignette and row gradient 
 
 At this step, we gonna apply at once vignetting, row gradient and dark level correction. The dark level correction is aimed at addressing the camera sensor's inherent noise and ensuring the baseline level of the image data is accurately set, enhancing image quality and accuracy for analysis.
+
+```{r}
+#| echo: true
+#| warning: false
+#| eval: false
+#| code-fold: true
+
+img_correction <- function(img){
+  
+  if(typeof(img) == "S4"){
+    img<-gsub(paste0(getwd(),"/"),"",sources(img))
+  }
+  
+  img_raw<-rast(img)
+  
+  img_vignette<-vignette_map(img_raw)
+  img_rowGradient<-row_gradient_map(img_raw)
+  
+  DarkLevel <- mean(as.numeric(str_split(exif$BlackLevel," " )[[1]]))
+  
+  L = img_vignette*img_rowGradient*(img_raw - DarkLevel) 
+  
+  return(L)
+}
+
+img_list<-list.files("Dual_MX_Images", pattern = ".tif", recursive = T, full.names = T)
+
+for (i in 1:length(img_list)) {
+  
+  corrected_img<-img_correction(img_list[i])
+  
+  writeRaster(corrected_img, paste0("Output/RAW/Radiometric_Calibration/All_Corr_",gsub(".*/","",img_list[i])),overwrite = T)
+
+}
+
+```
+
 

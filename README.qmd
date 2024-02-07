@@ -519,7 +519,7 @@ ggsave("Output/plot/exemple_QR_detection.png", plot_qr, width = 10, height = 10)
 Now, we need to determine the coordinates of the calibration panel relative to the coordinates of the QR code.
 The issue we face is that we cannot determine the orientation of the QR code, and therefore, we can't ascertain in which direction the reflectance calibration panel is situated. We need to explore each possibility. That's exactly what the `Coordinate_panel()` function does.
 
-**need to correct the position of A7 and A8 points by creating a new ax+b function based on A3 and A4**
+**need to correct coordinates of A7 and A8 by creating a new ax+b function based on A3 and A4**
 
 ```{r}
 #| echo: true

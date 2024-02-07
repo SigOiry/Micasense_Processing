@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-07 19:18:35.404978)**
+**WORK IN PROGRESS (last update : 2024-02-07 19:20:35.009231)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -518,8 +518,8 @@ ascertain in which direction the reflectance calibration panel is
 situated. We need to explore each possibility. That’s exactly what the
 `Coordinate_panel()` function does.
 
-**need to correct the position of A7 and A8 points by creating a new
-ax+b function based on A3 and A4**
+**need to correct coordinates of A7 and A8 by creating a new ax+b
+function based on A3 and A4**
 
 <details>
 <summary>Code</summary>

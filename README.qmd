@@ -546,7 +546,7 @@ Coordinate_panel<- function(df, ratio = 1.55){
   
   a_12<-(df %>% filter(names == "A_2") %>% pull(y)-df %>% filter(names == "A_1") %>% pull(y))/(df %>%   filter(names == "A_2") %>% pull(x)-df %>% filter(names == "A_1") %>% pull(x))
   
-  b_12<-df %>% filter(names == "A_1") %>% pull(y)-a*df %>% filter(names == "A_1") %>% pull(x)
+  b_12<-df %>% filter(names == "A_1") %>% pull(y)-a_12*df %>% filter(names == "A_1") %>% pull(x)
     
   dx = 1/sqrt(1+(a_12**2))
   dy = a_12/sqrt(1+(a_12**2))

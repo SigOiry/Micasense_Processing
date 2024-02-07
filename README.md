@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-07 19:20:35.009231)**
+**WORK IN PROGRESS (last update : 2024-02-07 21:02:40.999659)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -544,7 +544,7 @@ Coordinate_panel<- function(df, ratio = 1.55){
   
   a_12<-(df %>% filter(names == "A_2") %>% pull(y)-df %>% filter(names == "A_1") %>% pull(y))/(df %>%   filter(names == "A_2") %>% pull(x)-df %>% filter(names == "A_1") %>% pull(x))
   
-  b_12<-df %>% filter(names == "A_1") %>% pull(y)-a*df %>% filter(names == "A_1") %>% pull(x)
+  b_12<-df %>% filter(names == "A_1") %>% pull(y)-a_12*df %>% filter(names == "A_1") %>% pull(x)
     
   dx = 1/sqrt(1+(a_12**2))
   dy = a_12/sqrt(1+(a_12**2))

@@ -459,7 +459,8 @@ Now that we have a flat and calibrated radiance image, we can convert into refle
 
 Initially, it's essential to detect the calibration panel in images. To achieve this, we must locate the QR code of the calibration panel on each image by utilizing the `opencv` library.
 The function `ocv_qr_detect()` is used to find the coordinates of the QR code's corners as shown on this image. 
-Note that the Y-axis references used by `opencv` and `terra` differ, necessitating a correction to ensure that points are plotted correctly on the image. 
+
+Note that the Y-axis references used by `opencv` and `terra` differ, necessitating a correction to ensure that points are plotted correctly on the image. Please note also that this detection process is performed on the raw image because the `OpenCV` library cannot open 32-bit data; it is only capable of handling 16-bit images. 
 
 ```{r}
 #| echo: true
@@ -467,23 +468,33 @@ Note that the Y-axis references used by `opencv` and `terra` differ, necessitati
 #| eval: false
 #| code-fold: true
 
-img<-opencv::ocv_read('Dual_MX_Images/Red/IMG_0002_1.tif') ### Open the image with opencv
-
-img_rast<-rast('Dual_MX_Images/Red/IMG_0002_1.tif') ### open the image with Terra 
-names(img_rast)<- "value"
-
-y_dim<-exif_read('Dual_MX_Images/Red/IMG_0002_1.tif')$ImageHeight ### Retrieve the number of rows of the image
-
-qr_coordinate<-attr(opencv::ocv_qr_detect(img),which = "points") %>% 
+Qr_detection<-function(img){
+  
+  if(typeof(img) == "S4"){
+    img<-gsub(paste0(getwd(),"/"),"",sources(img))
+  }
+  
+  img_openCV<-opencv::ocv_read(img) ### Open the image with opencv
+  y_dim<-exif_read(img)$ImageHeight ### Retrieve the number of rows of the image
+  
+  qr_coordinate<-attr(opencv::ocv_qr_detect(img_openCV),which = "points") %>% 
   as.data.frame() %>% 
   rename(x = "V1",
          y = "V2") %>% 
   mutate(y= y_dim - y ,# Convert Y coordinate to match terra coordinate
          names = paste0("A_",c(1:4)))
+  
+  return(qr_coordinate)
+}
+
+
+df<-Qr_detection("Dual_MX_Images/Red/IMG_0002_1.tif")
+
+img_rast<-rast("Dual_MX_Images/Red/IMG_0002_1.tif")
+names(img_rast)<-"value"
 
 
 ### PLOT
-
 plot_qr<-ggplot()+
   geom_spatraster(data = img_rast, aes(fill = value))+
   labs(fill = "DN")+
@@ -492,8 +503,8 @@ plot_qr<-ggplot()+
     na.value = "transparent",
     trans = "sqrt"
   )+
-  geom_point(data = qr_coordinate, aes(x =x , y = y), color = "red", size = 3)+
-  geom_text(data = qr_coordinate, aes(x =x+30 , y = y+30, label = names), fontface = "bold",color = "red", size = 6)+
+  geom_point(data = df, aes(x =x , y = y), color = "red", size = 3)+
+  geom_text(data = df, aes(x =x+30 , y = y+30, label = names), fontface = "bold",color = "red", size = 6)+
   theme_void()+
   theme(legend.position = "none")+
   coord_equal()

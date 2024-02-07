@@ -453,8 +453,9 @@ for(i in 1 : length(img_path_cal)){
 ```
 
 
-## Radiance to Reflectance <img src="Output/plot/exemple_QR_detection.png" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
+## Radiance to Reflectance 
 
+### QR code and calibration panel detection <img src="Output/plot/exemple_QR_detection.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
 Now that we have a flat and calibrated radiance image, we can convert into reflectance. To do this, we will use the radiance values of the panel image of known reflectance to determine a scale factor between radiance and reflectance.
 
 Initially, it's essential to detect the calibration panel in images. To achieve this, we must locate the QR code of the calibration panel on each image by utilizing the [OpenCV](https://ropensci.r-universe.dev) library.

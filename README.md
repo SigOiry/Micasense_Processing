@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-07 16:28:42.531914)**
+**WORK IN PROGRESS (last update : 2024-02-07 16:31:08.838752)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -437,7 +437,9 @@ for(i in 1 : length(img_path_cal)){
 
 </details>
 
-## Radiance to Reflectance <img src="Output/plot/exemple_QR_detection.png" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
+## Radiance to Reflectance
+
+### QR code and calibration panel detection <img src="Output/plot/exemple_QR_detection.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
 
 Now that we have a flat and calibrated radiance image, we can convert
 into reflectance. To do this, we will use the radiance values of the

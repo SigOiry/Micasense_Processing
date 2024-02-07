@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-07 16:24:06.172526)**
+**WORK IN PROGRESS (last update : 2024-02-07 16:28:42.531914)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -446,15 +446,18 @@ radiance and reflectance.
 
 Initially, it’s essential to detect the calibration panel in images. To
 achieve this, we must locate the QR code of the calibration panel on
-each image by utilizing the `opencv` library. The function
-`ocv_qr_detect()` is used to find the coordinates of the QR code’s
-corners as shown on this image.
+each image by utilizing the [OpenCV](https://ropensci.r-universe.dev)
+library. The function `ocv_qr_detect()` is used to find the coordinates
+of the QR code’s corners as shown on this image.
 
 Note that the Y-axis references used by `opencv` and `terra` differ,
 necessitating a correction to ensure that points are plotted correctly
 on the image. Please note also that this detection process is performed
 on the raw image because the `OpenCV` library cannot open 32-bit data;
 it is only capable of handling 16-bit images.
+
+The `Qr_detection()` function takes the path of a raw image as input and
+outputs a dataframe containing the coordinates of the QR code’s corners.
 
 <details>
 <summary>Code</summary>

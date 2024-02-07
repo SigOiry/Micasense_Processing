@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-06 21:46:07.725237)**
+**WORK IN PROGRESS (last update : 2024-02-07 14:27:27.43854)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -384,9 +384,11 @@ Note also that during this conversion, it’s essential to normalize by
 the image’s bit depth (2^16 for 16-bit images, 2^12 for 12-bit images)
 because the calibration coefficients are designed to work with
 normalized input values. This normalization ensures the coefficients are
-applied correctly across different image bit depths.
-
-**No metadata are saved to the TIFF file by the `terra` package of R……**
+applied correctly across different image bit depths. It’s important to
+note that the `terra` package in R does not support the management of
+TIFF file metadata, meaning there is no EXIF data in files saved using
+`writeRaster()`. To address this issue, I am extracting metadata from
+the raw files and associating it with the corrected files.
 
 <details>
 <summary>Code</summary>
@@ -400,23 +402,34 @@ DN_to_Radiance<-function(img){
   }else{
     img_RAW<-rast(img)
   }
-  
-  exposure_time<-exif_read(img)$ExposureTime
-  Gain<-exif_read(img)$ISOSpeed/100
-  bitsPerPixel<-exif_read(img)$BitsPerSample
+ 
+  img_name_current<-gsub(".*/","",img) %>% substr(.,10,24)
+  img_path_RAW<-list.files("Dual_MX_Images",pattern = ".tif", recursive = T, full.names = T) %>% 
+    as.data.frame() %>% 
+    rename(path = ".") %>% 
+    mutate(image_name = gsub(".*/","",path)) %>% 
+    filter(image_name == img_name_current) %>% 
+    pull(path)
+    
+   
+  exposure_time<-exif_read(img_path_RAW)$ExposureTime
+  Gain<-exif_read(img_path_RAW)$ISOSpeed/100
+  bitsPerPixel<-exif_read(img_path_RAW)$BitsPerSample
   dnMax <- 2**bitsPerPixel
-  a1<- as.numeric(exif_read(img)$RadiometricCalibration[[1]])[1]
+  a1<- as.numeric(exif_read(img_path_RAW)$RadiometricCalibration[[1]])[1]
   
-  radianceImage <- img_RAW/(Gain*exposure_time)*a1*dnMax
+  radianceImage <- img_RAW/(Gain*exposure_time)*a1/dnMax
   
   return(radianceImage)
 }
 
-img_path<-list.files("Output/RAW/Radiometric_Calibration",pattern = ".tif", full.names = T)
+img_path_cal<-list.files("Output/RAW/Radiometric_Calibration",pattern = ".tif", full.names = T)
 
-for(i in 1 : length(img_path)){
+for(i in 1 : length(img_path_cal)){
   
-  Image_Radiance<-DN_to_Radiance(img_path[i])
+  Image_Radiance<-DN_to_Radiance(img_path_cal[i])
+  
+   writeRaster(Image_Radiance, paste0("Output/Radiance/Radiance_",gsub(".*/","",img_path_cal[i]) %>% gsub("All_Corr_","",.)),overwrite = T)
 }
 ```
 

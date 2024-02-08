@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-07 21:02:40.999659)**
+**WORK IN PROGRESS (last update : 2024-02-08 07:21:35.303516)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -474,7 +474,7 @@ Qr_detection<-function(img){
   img_openCV<-opencv::ocv_read(img) ### Open the image with opencv
   y_dim<-exif_read(img)$ImageHeight ### Retrieve the number of rows of the image
   
-  qr_coordinate<-attr(opencv::ocv_qr_detect(img_openCV),which = "points") %>% 
+  qr_coordinate<-attr(opencv::ocv_qr_detect(img_openCV, draw = T),which = "points") %>% 
   as.data.frame() %>% 
   rename(x = "V1",
          y = "V2") %>% 
@@ -518,8 +518,7 @@ ascertain in which direction the reflectance calibration panel is
 situated. We need to explore each possibility. That’s exactly what the
 `Coordinate_panel()` function does.
 
-**need to correct coordinates of A7 and A8 by creating a new ax+b
-function based on A3 and A4**
+**MARCHE PAAAASSSSS**
 
 <details>
 <summary>Code</summary>
@@ -545,27 +544,34 @@ Coordinate_panel<- function(df, ratio = 1.55){
   a_12<-(df %>% filter(names == "A_2") %>% pull(y)-df %>% filter(names == "A_1") %>% pull(y))/(df %>%   filter(names == "A_2") %>% pull(x)-df %>% filter(names == "A_1") %>% pull(x))
   
   b_12<-df %>% filter(names == "A_1") %>% pull(y)-a_12*df %>% filter(names == "A_1") %>% pull(x)
+  
+  a_34<-(df %>% filter(names == "A_3") %>% pull(y)-df %>% filter(names == "A_4") %>% pull(y))/(df %>%   filter(names == "A_3") %>% pull(x)-df %>% filter(names == "A_4") %>% pull(x))
+  
+  b_34<-df %>% filter(names == "A_3") %>% pull(y)-a_34*df %>% filter(names == "A_3") %>% pull(x)
     
-  dx = 1/sqrt(1+(a_12**2))
-  dy = a_12/sqrt(1+(a_12**2))
+  dx_12 = 1/sqrt(1+(a_12**2))
+  dy_12 = a_12/sqrt(1+(a_12**2))
+  
+  dx_34 = 1/sqrt(1+(a_34**2))
+  dy_34 = a_34/sqrt(1+(a_34**2))
     
-  x5_1 = df %>% filter(names == "A_1") %>% pull(x) + (qr_width*ratio)*dx
-  x5_2 = df %>% filter(names == "A_1") %>% pull(x) - (qr_width*ratio)*dx
-  x6_1 = df %>% filter(names == "A_2") %>% pull(x) + (qr_width*ratio)*dx
-  x6_2 = df %>% filter(names == "A_2") %>% pull(x) - (qr_width*ratio)*dx
-  x7_1 = df %>% filter(names == "A_3") %>% pull(x) + (qr_width*ratio)*dx
-  x7_2 = df %>% filter(names == "A_3") %>% pull(x) - (qr_width*ratio)*dx
-  x8_1 = df %>% filter(names == "A_4") %>% pull(x) + (qr_width*ratio)*dx
-  x8_2 = df %>% filter(names == "A_4") %>% pull(x) - (qr_width*ratio)*dx
+  x5_1 = df %>% filter(names == "A_1") %>% pull(x) + (qr_width*ratio)*dx_12
+  x5_2 = df %>% filter(names == "A_1") %>% pull(x) - (qr_width*ratio)*dx_12
+  x6_1 = df %>% filter(names == "A_2") %>% pull(x) + (qr_width*ratio)*dx_12
+  x6_2 = df %>% filter(names == "A_2") %>% pull(x) - (qr_width*ratio)*dx_12
+  x7_1 = df %>% filter(names == "A_3") %>% pull(x) + (qr_width*ratio)*dx_34
+  x7_2 = df %>% filter(names == "A_3") %>% pull(x) - (qr_width*ratio)*dx_34
+  x8_1 = df %>% filter(names == "A_4") %>% pull(x) + (qr_width*ratio)*dx_34
+  x8_2 = df %>% filter(names == "A_4") %>% pull(x) - (qr_width*ratio)*dx_34
 
-  y5_1 = df %>% filter(names == "A_1") %>% pull(y) + (qr_width*ratio)*dy
-  y5_2 = df %>% filter(names == "A_1") %>% pull(y) - (qr_width*ratio)*dy
-  y6_1 = df %>% filter(names == "A_2") %>% pull(y) + (qr_width*ratio)*dy
-  y6_2 = df %>% filter(names == "A_2") %>% pull(y) - (qr_width*ratio)*dy
-  y7_1 = df %>% filter(names == "A_3") %>% pull(y) + (qr_width*ratio)*dy
-  y7_2 = df %>% filter(names == "A_3") %>% pull(y) - (qr_width*ratio)*dy
-  y8_1 = df %>% filter(names == "A_4") %>% pull(y) + (qr_width*ratio)*dy
-  y8_2 = df %>% filter(names == "A_4") %>% pull(y) - (qr_width*ratio)*dy
+  y5_1 = df %>% filter(names == "A_1") %>% pull(y) + (qr_width*ratio)*dy_12
+  y5_2 = df %>% filter(names == "A_1") %>% pull(y) - (qr_width*ratio)*dy_12
+  y6_1 = df %>% filter(names == "A_2") %>% pull(y) + (qr_width*ratio)*dy_12
+  y6_2 = df %>% filter(names == "A_2") %>% pull(y) - (qr_width*ratio)*dy_12
+  y7_1 = df %>% filter(names == "A_3") %>% pull(y) + (qr_width*ratio)*dy_34
+  y7_2 = df %>% filter(names == "A_3") %>% pull(y) - (qr_width*ratio)*dy_34
+  y8_1 = df %>% filter(names == "A_4") %>% pull(y) + (qr_width*ratio)*dy_34
+  y8_2 = df %>% filter(names == "A_4") %>% pull(y) - (qr_width*ratio)*dy_34
   
   
   output<-data.frame(x5 = c(x5_1,x5_2),
@@ -666,6 +672,13 @@ return(output_coord)
 
 test <- Coordinate_panel(df)
 
+test <- test %>%
+  filter(name == "A_5_3"|
+         name == "A_6_3"|
+         name == "A_7_3"|
+         name == "A_8_3")
+
+
 ggplot()+
   geom_spatraster(data = img_rast, aes(fill = value))+
   labs(fill = "DN")+
@@ -675,7 +688,7 @@ ggplot()+
     trans = "sqrt"
   )+
   geom_point(data = test, aes(x =x , y = y), color = "red", size = 3)+
-  # geom_text(data = new_df, aes(x =x+30 , y = y+30, label = names), fontface = "bold",color = "red", size = 6)+
+  geom_text(data = test, aes(x =x+30 , y = y+30, label = name), fontface = "bold",color = "red", size = 6)+
   theme_void()+
   theme(legend.position = "none")+
   coord_equal()+

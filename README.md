@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 12:56:58.654018)**
+**WORK IN PROGRESS (last update : 2024-02-08 14:54:35.664733)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -176,12 +176,12 @@ vignette_map<- function(img){
   vignette_poly_coef <- ((metadata$VignettingPolynomial[[1]]))
   
   vignette_poly<-function(dist,vignette_poly_coef = vignette_poly_coef){
-    x <- vignette_poly_coef[6]*dist^6
-      +vignette_poly_coef[5]*dist^5
-      +vignette_poly_coef[4]*dist^4
-      +vignette_poly_coef[3]*dist^3
-      +vignette_poly_coef[2]*dist^2
-      +vignette_poly_coef[1]*dist+1
+    x <- vignette_poly_coef[6]*dist^6+
+      vignette_poly_coef[5]*dist^5+
+      vignette_poly_coef[4]*dist^4+
+      vignette_poly_coef[3]*dist^3+
+      vignette_poly_coef[2]*dist^2+
+      vignette_poly_coef[1]*dist+1
     return(x)
   }
   
@@ -199,7 +199,7 @@ vignette_map<- function(img){
   dist<-matrix(dist_list, ncol = x_dim,nrow = y_dim)
   
   
-  vignette_list <-1/vignette_poly(dist,vignette_poly_coef)
+  vignette_list <-matrix(1/vignette_poly(dist,vignette_poly_coef), ncol = x_dim, nrow = y_dim)
   
   vignette<-rast(matrix(vignette_list, ncol = x_dim, nrow = y_dim))
 
@@ -348,12 +348,11 @@ img_correction <- function(img){
   
   img_vignette<-vignette_map(img_raw)
   img_rowGradient<-row_gradient_map(img_raw)
+  exif<-exif_read(img)
   
   DarkLevel <- mean(as.numeric(str_split(exif$BlackLevel," " )[[1]]))
   
   L = img_vignette*img_rowGradient*(img_raw - DarkLevel) 
-  
-  describe(img_raw)
   
   return(L)
 }
@@ -404,23 +403,18 @@ DN_to_Radiance<-function(img){
   }else{
     img_RAW<-rast(img)
   }
- 
-  img_name_current<-gsub(".*/","",img) %>% substr(.,10,24)
-  img_path_RAW<-list.files("Dual_MX_Images",pattern = ".tif", recursive = T, full.names = T) %>% 
-    as.data.frame() %>% 
-    rename(path = ".") %>% 
-    mutate(image_name = gsub(".*/","",path)) %>% 
-    filter(image_name == img_name_current) %>% 
-    pull(path)
-    
-   
-  exposure_time<-exif_read(img_path_RAW)$ExposureTime
-  Gain<-exif_read(img_path_RAW)$ISOSpeed/100
-  bitsPerPixel<-exif_read(img_path_RAW)$BitsPerSample
-  dnMax <- 2**bitsPerPixel
-  a1<- as.numeric(exif_read(img_path_RAW)$RadiometricCalibration[[1]])[1]
   
-  radianceImage <- img_RAW/(Gain*exposure_time)*a1/dnMax
+  L<-img_correction(img_RAW)
+ 
+  exif<-exif_read(img)
+
+  exposure_time<-exif_read(img)$ExposureTime
+  Gain<-exif_read(img)$ISOSpeed/100
+  bitsPerPixel<-exif_read(img)$BitsPerSample
+  dnMax <- 2**bitsPerPixel
+  a1<- as.numeric(exif_read(img)$RadiometricCalibration[[1]])[1]
+  
+  radianceImage <- L/(Gain*exposure_time)*a1/dnMax
   
   return(radianceImage)
 }
@@ -711,6 +705,109 @@ plot_possible_panel<-ggplot()+
 # plot_possible_panel
 
 ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel, width = 10, height = 7)
+```
+
+</details>
+
+### Radiance to reflectance conversion factor
+
+We need to retrieve a conversion factor for each band to convert
+radiance data to reflectance. This factor is simply a ratio between the
+radiance of the reflectance panel and the known reflectance of this
+panel. The reflectance values for the calibration panel are provided by
+MicaSense and are specific to each individual panel.
+
+This code create a dataframe with reflectance data of our calibration
+panel at each wavelength.
+
+<details>
+<summary>Code</summary>
+
+``` r
+### This are the reflectance of our calibration panel
+
+ref_panel<-data.frame(wv = c(444,475,531,560,650,668,705,717,740,842),
+                      reflectance = c(0.538,0.538,0.539,0.539,0.539,0.538,0.538,0.538,0.537,0.535))
+
+write.csv(ref_panel, "Output/Reflectance_Panel/RP05-2025214-OB.csv", row.names = F)
+```
+
+</details>
+
+The following function takes a RAW image as input and outputs the ratio
+used to convert radiance to reflectance (if a calibration panel is found
+in the image). If you loop this function across the bands that include a
+calibration panel, it will provide you with the ratio for each
+wavelength needed to transform radiance values into reflectance value
+(the result is stored in
+`Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv`:
+
+<details>
+<summary>Code</summary>
+
+``` r
+Rad_to_Ref_ratio<-function(RAW){
+  
+  if(typeof(RAW) == "S4"){
+    path<-gsub(paste0(getwd(),"/"),"",sources(RAW))
+  }else{
+    path <- RAW
+    RAW<-rast(path,warn=F)
+  }
+  
+  L<-DN_to_Radiance(RAW) ### Image in radiance corrected from vignetting, row gradient and darklevel. 
+  Panel <- Coordinate_panel(RAW)
+
+  if(any(!is.na(Panel))){
+    Panel<-Panel %>% 
+      vect()
+    
+    band_wv<-exif_read(path)$CentralWavelength
+    FlID<-exif_read(path)$FlightId
+    CaptureID<-exif_read(path)$CaptureId
+    
+    Panel_ref<-"Output/Reflectance_Panel/RP05-2025214-OB.csv" %>% 
+      read.csv() %>% 
+      filter(wv == band_wv) %>% 
+      pull(reflectance)
+    
+    Radiance_Data<-extract(L,Panel) %>% 
+      reframe(avg = mean(lyr.1)) %>% 
+      pull(avg)
+    
+    output<-data.frame(wv = band_wv,
+                       ratio = Panel_ref/Radiance_Data)
+    
+    if(!file.exists("Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv")){
+      write.csv(output,"Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv",row.names = F)
+    }else{
+      previous_file<-read.csv("Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv")
+      if(any(previous_file$wv == band_wv)){
+        previous_file[which(previous_file$wv == band_wv),"ratio"] <- Panel_ref/Radiance_Data
+        write.csv(previous_file,"Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv",row.names = F)
+
+      }else{
+        previous_file<-rbind(previous_file,output)
+        write.csv(previous_file,"Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv",row.names = F)
+      }
+      
+    }
+    
+    return(output)
+  }else{
+    print("No calibration Panel found")
+    return(NA)
+  }
+}
+
+
+list_img<-list.files("Dual_MX_Images", pattern = ".tif", recursive = T, full.names = T)
+
+for(i in 1:length(list_img)){
+ RAW<-list_img[i] %>% 
+  rast() 
+ ratio<-Rad_to_Ref_ratio(RAW) 
+}
 ```
 
 </details>

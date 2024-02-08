@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 11:27:57.576632)**
+**WORK IN PROGRESS (last update : 2024-02-08 12:56:58.654018)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -474,13 +474,19 @@ Qr_detection<-function(img){
   img_openCV<-opencv::ocv_read(img) ### Open the image with opencv
   y_dim<-exif_read(img)$ImageHeight ### Retrieve the number of rows of the image
   
-  qr_coordinate<-attr(opencv::ocv_qr_detect(img_openCV, draw = T),which = "points") %>% 
+  qr_coordinate<-attr(opencv::ocv_qr_detect(img_openCV),which = "points") 
+  
+  if(!is.null(qr_coordinate)){
+  
+  qr_coordinate<-qr_coordinate %>% 
   as.data.frame() %>% 
   rename(x = "V1",
          y = "V2") %>% 
   mutate(y= y_dim - y ,# Convert Y coordinate to match terra coordinate
          names = paste0("A_",c(1:4)))
-  
+  }else{
+    qr_coordinate <- NA
+  }
   return(qr_coordinate)
 }
 
@@ -526,7 +532,8 @@ takes an image as input and estimates the coordinates of four possible
 positions for the calibration panel. Then, it calculates the standard
 deviation of the radiance at these four potential positions. The polygon
 that is given as the output of the `Coordinate_panel()` function is the
-one where the standard deviation of the radiance is the lowest.
+one where the standard deviation of the radiance is the lowest.If no qr
+code is detected on the image, NA is return.
 
 <details>
 <summary>Code</summary>
@@ -535,6 +542,10 @@ one where the standard deviation of the radiance is the lowest.
 Coordinate_panel<- function(img, ratio = 1.6){
   
   df<-Qr_detection(img)
+  
+  if(any(!is.na(df))){
+    
+  
     
   pts<-df %>% 
   st_as_sf(coords = c("x","y"))
@@ -670,14 +681,16 @@ output<-Radiance_points %>%
   st_cast("POLYGON")%>% 
   st_convex_hull()
 
-
+  }else{
+   output <- NA
+ }
 
   
 return(output)
 }
 
 
-img_rast<-rast("Dual_MX_Images/Red/IMG_0002_1.tif")
+img_rast<-rast("Dual_MX_Images/Red/IMG_0815_1.tif")
 names(img_rast)<-"value"
 
 Panel_polygon <- Coordinate_panel(img_rast) 

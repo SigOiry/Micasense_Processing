@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 17:18:09.205066)**
+**WORK IN PROGRESS (last update : 2024-02-08 17:53:16.293175)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -836,7 +836,7 @@ RAW_to_Reflectance<-function(RAW){
   
   Reflectance_Image<-L*ratio
   
-  writeRaster(Reflectance_Image,paste0("Output/Reflectance/R_",gsub(".*/","",path)))
+  writeRaster(Reflectance_Image,paste0("Output/Reflectance/R_",gsub(".*/","",path)), overwrite = T)
 }  
 
 list_img<-list.files("Dual_MX_Images", pattern = ".tif", recursive = T, full.names = T)
@@ -849,9 +849,3 @@ for(i in 1:length(list_img)){
 ```
 
 </details>
-
-The reflectance values obtained through this workflow seem to be really
-low. I’m wondering if they’re expressed in sr^-1, considering that the
-unit of radiance is W/m^2/nm/sr. This kind of reflectance is referred to
-as remote sensing reflectance. I’m contemplating whether I need to
-multiply these values by Pi to obtain the surface reflectance…

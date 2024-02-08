@@ -1,38 +1,45 @@
----
-title: "Micasense RedEdge-MX DUAL processing"
-author: "Simon Oiry"
-format: 
-   gfm:
-     html-math-method: 
-       method: webtex
-       url: https://latex.codecogs.com/png.image?%5Cbg_black&space;
-editor: visual
-editor_options: 
-  chunk_output_type: console
----
+# Micasense RedEdge-MX DUAL processing
+Simon Oiry
 
-**WORK IN PROGRESS (last update : `r Sys.time()`)**
+**WORK IN PROGRESS (last update : 2024-02-08 07:39:58.691301)**
 
-This workflow adapts the Micasense workflow for manual processing of images from the Micasense RedEdge-MX Dual camera. he original workflow, written in Python, is available [here](https://github.com/micasense/imageprocessing). This repository aims to translate the Python workflow into an R workflow. I'm not really used to code in Python and I thought it can be a good exercise to try to translate this repository in R.
+This workflow adapts the Micasense workflow for manual processing of
+images from the Micasense RedEdge-MX Dual camera. he original workflow,
+written in Python, is available
+[here](https://github.com/micasense/imageprocessing). This repository
+aims to translate the Python workflow into an R workflow. I’m not really
+used to code in Python and I thought it can be a good exercise to try to
+translate this repository in R.
 
-The original aims of micasense when they created this processing workflow was to help researchers and developers to do their own image processing. While a number of commercial tools fully support processing MicaSense data into reflectance maps, there are a number of reasons to process your own data, including controlling the entire radiometric workflow (for academic or publication reasons), pre-processing images to be used in a non-radiometric photogrammetry suite, or processing single sets of 10 images without building a larger map.
+The original aims of micasense when they created this processing
+workflow was to help researchers and developers to do their own image
+processing. While a number of commercial tools fully support processing
+MicaSense data into reflectance maps, there are a number of reasons to
+process your own data, including controlling the entire radiometric
+workflow (for academic or publication reasons), pre-processing images to
+be used in a non-radiometric photogrammetry suite, or processing single
+sets of 10 images without building a larger map.
 
-I will personally use this workflow to **process single static images**, where the usual structure-from-motion photogrammetry technique cannot be used.
+I will personally use this workflow to **process single static images**,
+where the usual structure-from-motion photogrammetry technique cannot be
+used.
 
 ## Dual-MX Sensor <img src="img/Bandswv.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
 
-The dual-MX camera have a spectral resolution of 10 bands, ranging from the blue (444nm) to the NIR (840nm).
+The dual-MX camera have a spectral resolution of 10 bands, ranging from
+the blue (444nm) to the NIR (840nm).
 
 ## Packages
 
-The first thing to do is to ensure that all the packages are ready to be used. The [exiftoolr](https://github.com/JoshOBrien/exiftoolr) packages is used to read Exif of tiff files. After installing the package you will need to run this line of code : `exiftoolr::install_exiftool()`.
+The first thing to do is to ensure that all the packages are ready to be
+used. The [exiftoolr](https://github.com/JoshOBrien/exiftoolr) packages
+is used to read Exif of tiff files. After installing the package you
+will need to run this line of code : `exiftoolr::install_exiftool()`.
 
-```{r Packages}
-#| echo: true
-#| warning: false
-#| eval: true
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 require(tidyverse)
 require(tidyterra)
 require(exiftoolr)
@@ -40,19 +47,19 @@ require(terra)
 require(patchwork)
 require(opencv) # install.packages("opencv", repos = "https://ropensci.r-universe.dev")
 require(sf)
-
 ```
+
+</details>
 
 ## Locate images and Reading metadata used to orthorectify, calibrate and align images
 
-The code is used to find the path for each individual image, identify each band, and extract all the necessary metadata.
+The code is used to find the path for each individual image, identify
+each band, and extract all the necessary metadata.
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 image_df<-"Dual_MX_Images" %>% 
   list.files(recursive = T, full.names = T) %>% 
   as.data.frame() %>% 
@@ -110,8 +117,9 @@ for (i in 1:nrow(image_df)){
   meta$Vignetting_Polynomial[i]<-c(exif$VignettingPolynomial)
   meta$Unique_ID[i]<-paste(sep = "_",meta$Capture_ID[i],meta$Central_Wavelength[i])
 }
-    
 ```
+
+</details>
 
 |    Name of metadata     |                      Description                       |    Unit    |                                                                                                                                                 Comments                                                                                                                                                 |
 |:-----------------------:|:------------------------------------------------------:|:----------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
@@ -126,24 +134,30 @@ for (i in 1:nrow(image_df)){
 |       Black_Level       |                    darkPixel value                     |     DN     | Average of 4 values. These values come from optically-covered pixels on the imager which are exposed at the same time as the image pixels. They measure the small amount of random charge generation in each pixel, independent of incoming light, which is common to all semiconductor imaging devices. |
 | Radiometric_Calibration | Optical parameter used for the row gradient correction |            |                                                                                                                                       imager-specific calibrations                                                                                                                                       |
 
-: Description of the metadata extracted from micasense images
+Description of the metadata extracted from micasense images
 
 ## Vignetting correction <img src="Output/plot/exemple_vignetting.png" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
 
-Vignetting refers to the reduction of image brightness toward the periphery compared to the image center, a phenomenon due to the lens properties of the camera. Before converting each image to radiance, the digital numbers need to be corrected for this vignetting effect.
+Vignetting refers to the reduction of image brightness toward the
+periphery compared to the image center, a phenomenon due to the lens
+properties of the camera. Before converting each image to radiance, the
+digital numbers need to be corrected for this vignetting effect.
 
-The function `vignette_map()` takes a `spatRaster` object or the path to a TIFF file as input and outputs the vignetting map of this image :
+The function `vignette_map()` takes a `spatRaster` object or the path to
+a TIFF file as input and outputs the vignetting map of this image :
 
-The output of `vignette_map()` should give something looking the plot on the left :
+The output of `vignette_map()` should give something looking the plot on
+the left :
 
-To correct the original image, we simply need to multiply the image by the vignetting map. While it may not be immediately obvious, in the plot below, the corners of the corrected images (right) are brighter than those of the raw image (left).
+To correct the original image, we simply need to multiply the image by
+the vignetting map. While it may not be immediately obvious, in the plot
+below, the corners of the corrected images (right) are brighter than
+those of the raw image (left).
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: true
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 vignette_map<- function(img){
   
   if(typeof(img) == "S4"){
@@ -207,70 +221,17 @@ vignette_map<- function(img){
 # ggsave("export/plot/exemple_vignetting.png", plot_exemple, width = 10, height = 10)
 ```
 
-```{r}
-#| cache: false
-#| echo: false
-#| warning: false
-#| eval: false
-#| fig-cap: Comparison of a RAW image (left) and an images corrected from the vigneting (right)
-#| label: fig-compareVignette
-#| fig-width: 10
-#| fig-height: 4
-#| out-width: "100%"
-
-# img_raw<-rast("Dual_MX_Images/Blue/IMG_0002_6.tif")
-# names(img_raw)<-"value1"
-# img_vignette_map <- vignette_map(img_raw)
-# img_corrected <- img_raw*img_vignette_map
-# names(img_corrected)<-"value2"
-# 
-# RAW_plot<-ggplot()+
-#   geom_spatraster(data = img_raw, aes(fill = value1))+
-#   labs(fill = "DN")+
-#   scale_fill_gradientn(
-#     colours = grey(0:100 / 100),
-#     na.value = "transparent",
-#     trans = "sqrt"
-#   )+
-#   geom_text(aes(x = 1000, y =800 , label = "Raw image"),
-#             color = "white",
-#             size = 5)+
-#   theme_void()+
-#   theme(legend.position = "none")+
-#   coord_equal()
-# 
-# 
-# Corrected_plot <- ggplot()+
-#   geom_spatraster(data = img_corrected, aes(fill = value2))+
-#   labs(fill = "DN")+
-#   scale_fill_gradientn(
-#     colours = grey(0:100 / 100),
-#     na.value = "transparent",
-#     trans = "sqrt"
-#   )+
-#   geom_text(aes(x = 930, y =800 , label = "Corrected image"),
-#             color = "white",
-#             size = 5)+
-#   theme_void()+
-#   theme(legend.position = "none")+
-#   coord_equal()
-#   
-# a<-RAW_plot+Corrected_plot
-# 
-# 
-# ggsave("Output/plot/micasense_compare.png",a)
-```
+</details>
 
 <img src="Output/plot/micasense_compare.png" width="100%" align="left" style="padding-left:10px;background-color:white;"/>
 
-The following code is a loop designed to correct all images present in the Dual_MX_Images folder.
+The following code is a loop designed to correct all images present in
+the Dual_MX_Images folder.
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 img_list<-list.files("Dual_MX_Images", pattern = ".tif",recursive = T,full.names = T)
 
 for(i in 1:length(img_list)){
@@ -280,25 +241,32 @@ for(i in 1:length(img_list)){
 
   writeRaster(img_corrected, paste0("Output/RAW/Vignetting/Vign_",gsub(".*/","",img_list[i])),overwrite = T)
 }
-
 ```
+
+</details>
 
 ## Row Gradient correction <img src="Output/plot/exemple_RowGradient.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
 
-The next step involves correcting what MicaSense refers to as the Row Gradient I haven't been able to find any resources explaining what it is, which led me to consult ChatGPT.
+The next step involves correcting what MicaSense refers to as the Row
+Gradient I haven’t been able to find any resources explaining what it
+is, which led me to consult ChatGPT.
 
-It appears there's a disparity in the amount of light captured at the top of the sensor versus what's recorded at the bottom.
+It appears there’s a disparity in the amount of light captured at the
+top of the sensor versus what’s recorded at the bottom.
 
-The row gradient correction applied by MicaSense on raw images before processing is a calibration step aimed at compensating for any non-uniformities and artifacts that may be present across the rows of the sensor in the captured images.
+The row gradient correction applied by MicaSense on raw images before
+processing is a calibration step aimed at compensating for any
+non-uniformities and artifacts that may be present across the rows of
+the sensor in the captured images.
 
-Within the `XMP:RadiometricCalibration` tag of MicaSense images' metadata, one can find all the necessary information to correct for this row gradient effect.
+Within the `XMP:RadiometricCalibration` tag of MicaSense images’
+metadata, one can find all the necessary information to correct for this
+row gradient effect.
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 row_gradient_map<-function(img){
   
   if(typeof(img) == "S4"){
@@ -334,17 +302,17 @@ row_gradient_map<-function(img){
 #   theme(legend.position = "top")
 # 
 # ggsave("Output/plot/exemple_RowGradient.png", plot_exemple, width = 10, height = 10)
-
 ```
 
-The following code is a loop designed to correct all images present in the Dual_MX_Images folder.
+</details>
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+The following code is a loop designed to correct all images present in
+the Dual_MX_Images folder.
 
+<details>
+<summary>Code</summary>
+
+``` r
 img_list<-list.files("Dual_MX_Images", pattern = ".tif",recursive = T,full.names = T)
 
 for(i in 1:length(img_list)){
@@ -354,19 +322,22 @@ for(i in 1:length(img_list)){
 
   writeRaster(img_corrected, paste0("Output/RAW/Row_Gradient/Row_Grad_",gsub(".*/","",img_list[i])),overwrite = T)
 }
-
 ```
+
+</details>
 
 ## Subtract the dark level and adjust for vignette and row gradient
 
-At this stage, we will simultaneously apply vignetting, row gradient, and dark level corrections. The purpose of dark level correction is to mitigate the camera sensor's inherent noise and ensure that the baseline level of the image data is accurately established. This enhances the image quality and accuracy for analysis.
+At this stage, we will simultaneously apply vignetting, row gradient,
+and dark level corrections. The purpose of dark level correction is to
+mitigate the camera sensor’s inherent noise and ensure that the baseline
+level of the image data is accurately established. This enhances the
+image quality and accuracy for analysis.
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 img_correction <- function(img){
   
   if(typeof(img) == "S4"){
@@ -396,21 +367,35 @@ for (i in 1:length(img_list)) {
   writeRaster(corrected_img, paste0("Output/RAW/Radiometric_Calibration/All_Corr_",gsub(".*/","",img_list[i])),overwrite = T)
 
 }
-
 ```
+
+</details>
 
 ## DN to Radiance
 
-After adjusting the digital numbers for sensor and lens uncertainties, we can convert them to radiance to ensure that each image is expressed in the same unit (W/m\^2/nm/sr). To achieve this, it is necessary to retrieve the exposure time and the gain applied to each image. It's important to note that the ISO value stored in the EXIF data must be divided by 100. This is because the gain is represented in the photographic parameter ISO, with a base ISO of 100. Dividing the ISO value by 100 allows us to obtain a numeric gain.
+After adjusting the digital numbers for sensor and lens uncertainties,
+we can convert them to radiance to ensure that each image is expressed
+in the same unit (W/m^2/nm/sr). To achieve this, it is necessary to
+retrieve the exposure time and the gain applied to each image. It’s
+important to note that the ISO value stored in the EXIF data must be
+divided by 100. This is because the gain is represented in the
+photographic parameter ISO, with a base ISO of 100. Dividing the ISO
+value by 100 allows us to obtain a numeric gain.
 
-Note also that during this conversion, it's essential to normalize by the image's bit depth (2\^16 for 16-bit images, 2\^12 for 12-bit images) because the calibration coefficients are designed to work with normalized input values. This normalization ensures the coefficients are applied correctly across different image bit depths. It's important to note that the `terra` package in R does not support the management of TIFF file metadata, meaning there is no EXIF data in files saved using `writeRaster()`. To address this issue, I am extracting metadata from the raw files and associating it with the corrected files.
+Note also that during this conversion, it’s essential to normalize by
+the image’s bit depth (2^16 for 16-bit images, 2^12 for 12-bit images)
+because the calibration coefficients are designed to work with
+normalized input values. This normalization ensures the coefficients are
+applied correctly across different image bit depths. It’s important to
+note that the `terra` package in R does not support the management of
+TIFF file metadata, meaning there is no EXIF data in files saved using
+`writeRaster()`. To address this issue, I am extracting metadata from
+the raw files and associating it with the corrected files.
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 DN_to_Radiance<-function(img){
   
   if(typeof(img) == "S4"){
@@ -448,28 +433,38 @@ for(i in 1 : length(img_path_cal)){
   
    writeRaster(Image_Radiance, paste0("Output/Radiance/Radiance_",gsub(".*/","",img_path_cal[i]) %>% gsub("All_Corr_","",.)),overwrite = T)
 }
-
-
 ```
+
+</details>
 
 ## Radiance to Reflectance
 
 ### QR code and calibration panel detection <img src="Output/plot/exemple_QR_detection.png" width="50%" align="right" style="padding-left:10px;background-color:white;"/>
 
-Now that we have a flat and calibrated radiance image, we can convert into reflectance. To do this, we will use the radiance values of the panel image of known reflectance to determine a scale factor between radiance and reflectance.
+Now that we have a flat and calibrated radiance image, we can convert
+into reflectance. To do this, we will use the radiance values of the
+panel image of known reflectance to determine a scale factor between
+radiance and reflectance.
 
-Initially, it's essential to detect the calibration panel in images. To achieve this, we must locate the QR code of the calibration panel on each image by utilizing the [OpenCV](https://ropensci.r-universe.dev) library. The function `ocv_qr_detect()` is used to find the coordinates of the QR code's corners as shown on this image.
+Initially, it’s essential to detect the calibration panel in images. To
+achieve this, we must locate the QR code of the calibration panel on
+each image by utilizing the [OpenCV](https://ropensci.r-universe.dev)
+library. The function `ocv_qr_detect()` is used to find the coordinates
+of the QR code’s corners as shown on this image.
 
-Note that the Y-axis references used by `opencv` and `terra` differ, necessitating a correction to ensure that points are plotted correctly on the image. Please note also that this detection process is performed on the raw image because the `OpenCV` library cannot open 32-bit data; it is only capable of handling 16-bit images.
+Note that the Y-axis references used by `opencv` and `terra` differ,
+necessitating a correction to ensure that points are plotted correctly
+on the image. Please note also that this detection process is performed
+on the raw image because the `OpenCV` library cannot open 32-bit data;
+it is only capable of handling 16-bit images.
 
-The `Qr_detection()` function takes the path of a raw image as input and outputs a dataframe containing the coordinates of the QR code's corners.
+The `Qr_detection()` function takes the path of a raw image as input and
+outputs a dataframe containing the coordinates of the QR code’s corners.
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 Qr_detection<-function(img){
   
   if(typeof(img) == "S4"){
@@ -512,19 +507,23 @@ plot_qr<-ggplot()+
   coord_equal()
 
 ggsave("Output/plot/exemple_QR_detection.png", plot_qr, width = 10, height = 10)
-
 ```
 
-Now, we need to determine the coordinates of the calibration panel relative to the coordinates of the QR code. The issue we face is that we cannot determine the orientation of the QR code, and therefore, we can't ascertain in which direction the reflectance calibration panel is situated. We need to explore each possibility. That's exactly what the `Coordinate_panel()` function does.
+</details>
+
+Now, we need to determine the coordinates of the calibration panel
+relative to the coordinates of the QR code. The issue we face is that we
+cannot determine the orientation of the QR code, and therefore, we can’t
+ascertain in which direction the reflectance calibration panel is
+situated. We need to explore each possibility. That’s exactly what the
+`Coordinate_panel()` function does.
 
 **MARCHE PAAAASSSSS**
 
-```{r}
-#| echo: true
-#| warning: false
-#| eval: false
-#| code-fold: true
+<details>
+<summary>Code</summary>
 
+``` r
 df<-Qr_detection("Dual_MX_Images/Red/IMG_0002_1.tif")
 
 img_rast<-rast("Dual_MX_Images/Red/IMG_0002_1.tif")
@@ -695,7 +694,6 @@ ggplot()+
   coord_equal()+
   xlim(c(300,500))+
   ylim(c(100, 300))
-
-
-
 ```
+
+</details>

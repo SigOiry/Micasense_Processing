@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 11:23:46.39523)**
+**WORK IN PROGRESS (last update : 2024-02-08 11:26:33.385179)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -519,6 +519,8 @@ cannot determine the orientation of the QR code, and therefore, we can’t
 ascertain in which direction the reflectance calibration panel is
 situated. We need to explore each possibility.
 
+<img src="Output/plot/exemple_multiple_Panel_estimation2.png" width="30%" align="left" style="padding-left:0px;background-color:white;"/>
+
 That’s exactly the purpose of the `Coordinate_panel()` function. It
 takes an image as input and estimates the coordinates of four possible
 positions for the calibration panel. Then, it calculates the standard
@@ -695,9 +697,7 @@ plot_possible_panel<-ggplot()+
 
 plot_possible_panel
 
-Radiance_points<-extract(img,plot_possible_panel)
-
-ggsave("Output/plot/exemple_multiple_Panel_estimation.png", plot_possible_panel, width = 10, height = 7)
+ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel, width = 10, height = 7)
 ```
 
 </details>

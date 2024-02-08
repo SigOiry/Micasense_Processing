@@ -518,6 +518,8 @@ ggsave("Output/plot/exemple_QR_detection.png", plot_qr, width = 10, height = 10)
 
 Now, we need to determine the coordinates of the calibration panel relative to the coordinates of the QR code. The issue we face is that we cannot determine the orientation of the QR code, and therefore, we can't ascertain in which direction the reflectance calibration panel is situated. We need to explore each possibility.
 
+<img src="Output/plot/exemple_multiple_Panel_estimation2.png" width="30%" align="left" style="padding-left:0px;background-color:white;"/>
+
 That's exactly the purpose of the `Coordinate_panel()` function. It takes an image as input and estimates the coordinates of four possible positions for the calibration panel. Then, it calculates the standard deviation of the radiance at these four potential positions. The polygon that is given as the output of the `Coordinate_panel()` function is the one where the standard deviation of the radiance is the lowest.
 
 
@@ -692,9 +694,7 @@ plot_possible_panel<-ggplot()+
 
 plot_possible_panel
 
-Radiance_points<-extract(img,plot_possible_panel)
-
-ggsave("Output/plot/exemple_multiple_Panel_estimation.png", plot_possible_panel, width = 10, height = 7)
+ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel, width = 10, height = 7)
 
 
 ```

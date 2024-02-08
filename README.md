@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 10:29:06.409604)**
+**WORK IN PROGRESS (last update : 2024-02-08 11:23:46.39523)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -519,18 +519,17 @@ cannot determine the orientation of the QR code, and therefore, we can’t
 ascertain in which direction the reflectance calibration panel is
 situated. We need to explore each possibility.
 
-That’s exactly what the `Coordinate_panel()` function does. It takes an
-image as input and provides the coordinates of four possible positions
-of the calibration panel as output.
+That’s exactly the purpose of the `Coordinate_panel()` function. It
+takes an image as input and estimates the coordinates of four possible
+positions for the calibration panel. Then, it calculates the standard
+deviation of the radiance at these four potential positions. The polygon
+that is given as the output of the `Coordinate_panel()` function is the
+one where the standard deviation of the radiance is the lowest.
 
 <details>
 <summary>Code</summary>
 
 ``` r
-img_rast<-rast("Dual_MX_Images/Red/IMG_0002_1.tif")
-
-names(img_rast)<-"value"
-
 Coordinate_panel<- function(img, ratio = 1.6){
   
   df<-Qr_detection(img)
@@ -634,17 +633,52 @@ Coordinate_panel<- function(img, ratio = 1.6){
     }
   }
   
-return(new_points_rep)
+  
+coords_panels<-new_points_rep %>% 
+  select(x,y) 
+
+Radiance_extraction<-extract(img,coords_panels) %>% 
+  select(-ID)
+names(Radiance_extraction)<-"value"
+
+
+Radiance_points<-new_points_rep %>%
+  mutate(Radiance = Radiance_extraction$value) 
+
+NA_set<-Radiance_points %>% 
+                    filter(is.na(Radiance)) %>% 
+                    pull(set) %>% 
+                    unique()
+
+Radiance_points_metrics <- Radiance_points %>% 
+  filter(!set %in% NA_set) %>% 
+  group_by(set) %>% 
+  reframe(mean = mean(Radiance),
+          sd = sd(Radiance),
+          coast = sd / mean)
+
+selected_set<-Radiance_points_metrics %>% 
+  filter(coast == min(coast)) %>% 
+  pull(set)
+
+output<-Radiance_points %>% 
+  filter(set == selected_set) %>% 
+  st_as_sf(coords=c("x","y"))%>%
+  dplyr::summarise() %>%
+  st_cast("POLYGON")%>% 
+  st_convex_hull()
+
+
+
+  
+return(output)
 }
 
 
-coord_Panel <- Coordinate_panel(img_rast) 
+img_rast<-rast("Dual_MX_Images/Red/IMG_0002_1.tif")
+names(img_rast)<-"value"
 
-centroid_set<-coord_Panel %>% 
-  group_by(set) %>% 
-  reframe(x = mean(x),
-          y = mean(y))
-
+Panel_polygon <- Coordinate_panel(img_rast) 
 
 plot_possible_panel<-ggplot()+
   geom_spatraster(data = img_rast, aes(fill = value))+
@@ -654,13 +688,14 @@ plot_possible_panel<-ggplot()+
     na.value = "transparent",
     trans = "sqrt"
   )+
-  geom_point(data = coord_Panel, aes(x =x , y = y), color = "red", size = 3)+
-  geom_label(data = centroid_set, aes(x =x , y = y, label = set), fontface = "bold",color = "red", size = 8)+
+  geom_sf(data = Panel_polygon, fill = "darkred" )+
   theme_void()+
   theme(legend.position = "none")+
-  coord_equal()+
-  ylim(c(-60, 350))+
-  xlim(c(260,760))
+  coord_sf()
+
+plot_possible_panel
+
+Radiance_points<-extract(img,plot_possible_panel)
 
 ggsave("Output/plot/exemple_multiple_Panel_estimation.png", plot_possible_panel, width = 10, height = 7)
 ```

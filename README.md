@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 07:39:58.691301)**
+**WORK IN PROGRESS (last update : 2024-02-08 10:25:20.081915)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -515,24 +515,30 @@ Now, we need to determine the coordinates of the calibration panel
 relative to the coordinates of the QR code. The issue we face is that we
 cannot determine the orientation of the QR code, and therefore, we can’t
 ascertain in which direction the reflectance calibration panel is
-situated. We need to explore each possibility. That’s exactly what the
-`Coordinate_panel()` function does.
+situated. We need to explore each possibility.
 
-**MARCHE PAAAASSSSS**
+<img src="Output/plot/exemple_multiple_Panel_estimation.png" width="20%" align="left" style="padding-left:10px;background-color:white;"/>
+
+That’s exactly what the `Coordinate_panel()` function does. It takes an
+image as input and provides the coordinates of four possible positions
+of the calibration panel as output.
 
 <details>
 <summary>Code</summary>
 
 ``` r
-df<-Qr_detection("Dual_MX_Images/Red/IMG_0002_1.tif")
-
 img_rast<-rast("Dual_MX_Images/Red/IMG_0002_1.tif")
+
 names(img_rast)<-"value"
 
-Coordinate_panel<- function(df, ratio = 1.55){
+Coordinate_panel<- function(img, ratio = 1.6){
   
+  df<-Qr_detection(img)
+    
   pts<-df %>% 
   st_as_sf(coords = c("x","y"))
+  
+
   
   dist_A1A2<-round(st_distance(pts %>% filter(names == "A_1"),pts %>% filter(names == "A_2"))[[1]],0)
   dist_A3A4<-round(st_distance(pts %>% filter(names == "A_3"),pts %>% filter(names == "A_4"))[[1]],0)
@@ -540,6 +546,36 @@ Coordinate_panel<- function(df, ratio = 1.55){
   dist_A1A4<-round(st_distance(pts %>% filter(names == "A_1"),pts %>% filter(names == "A_4"))[[1]],0)
   
   qr_width = round(mean(dist_A1A2,dist_A3A4,dist_A2A3,dist_A1A4),0)
+  
+    ### Move points 15 % toward the center of the QR code
+  
+  centroid_pts<- df %>% 
+    reframe(x = mean(x),
+            y = mean(y)) %>% 
+    mutate(name = "C") %>%
+    st_as_sf(coords = c("x","y"))
+  
+  offset <- st_geometry(centroid_pts) - st_geometry(pts)
+  
+  pts_corrected <- pts
+  
+  st_geometry(pts_corrected)<- st_geometry(pts) + offset*0.15
+  
+  pts <- pts_corrected
+  
+  df <- pts_corrected %>%
+  dplyr::mutate(x = sf::st_coordinates(.)[,1],
+                y = sf::st_coordinates(.)[,2]) %>% 
+    as.data.frame() %>% 
+    select(-geometry)
+  
+      ### Recompute distances using corrected coordinates
+  dist_A1A2<-round(st_distance(pts %>% filter(names == "A_1"),pts %>% filter(names == "A_2"))[[1]],0)
+  dist_A3A4<-round(st_distance(pts %>% filter(names == "A_3"),pts %>% filter(names == "A_4"))[[1]],0)
+  dist_A2A3<-round(st_distance(pts %>% filter(names == "A_3"),pts %>% filter(names == "A_2"))[[1]],0)
+  dist_A1A4<-round(st_distance(pts %>% filter(names == "A_1"),pts %>% filter(names == "A_4"))[[1]],0)
+  
+  ###
   
   a_12<-(df %>% filter(names == "A_2") %>% pull(y)-df %>% filter(names == "A_1") %>% pull(y))/(df %>%   filter(names == "A_2") %>% pull(x)-df %>% filter(names == "A_1") %>% pull(x))
   
@@ -554,132 +590,63 @@ Coordinate_panel<- function(df, ratio = 1.55){
   
   dx_34 = 1/sqrt(1+(a_34**2))
   dy_34 = a_34/sqrt(1+(a_34**2))
-    
-  x5_1 = df %>% filter(names == "A_1") %>% pull(x) + (qr_width*ratio)*dx_12
-  x5_2 = df %>% filter(names == "A_1") %>% pull(x) - (qr_width*ratio)*dx_12
-  x6_1 = df %>% filter(names == "A_2") %>% pull(x) + (qr_width*ratio)*dx_12
-  x6_2 = df %>% filter(names == "A_2") %>% pull(x) - (qr_width*ratio)*dx_12
-  x7_1 = df %>% filter(names == "A_3") %>% pull(x) + (qr_width*ratio)*dx_34
-  x7_2 = df %>% filter(names == "A_3") %>% pull(x) - (qr_width*ratio)*dx_34
-  x8_1 = df %>% filter(names == "A_4") %>% pull(x) + (qr_width*ratio)*dx_34
-  x8_2 = df %>% filter(names == "A_4") %>% pull(x) - (qr_width*ratio)*dx_34
 
-  y5_1 = df %>% filter(names == "A_1") %>% pull(y) + (qr_width*ratio)*dy_12
-  y5_2 = df %>% filter(names == "A_1") %>% pull(y) - (qr_width*ratio)*dy_12
-  y6_1 = df %>% filter(names == "A_2") %>% pull(y) + (qr_width*ratio)*dy_12
-  y6_2 = df %>% filter(names == "A_2") %>% pull(y) - (qr_width*ratio)*dy_12
-  y7_1 = df %>% filter(names == "A_3") %>% pull(y) + (qr_width*ratio)*dy_34
-  y7_2 = df %>% filter(names == "A_3") %>% pull(y) - (qr_width*ratio)*dy_34
-  y8_1 = df %>% filter(names == "A_4") %>% pull(y) + (qr_width*ratio)*dy_34
-  y8_2 = df %>% filter(names == "A_4") %>% pull(y) - (qr_width*ratio)*dy_34
+  x5 = df %>% filter(names == "A_1") %>% pull(x) - (qr_width*ratio)*dx_12
+  y5 = df %>% filter(names == "A_1") %>% pull(y) - (qr_width*ratio)*dy_12
+  x6 = df %>% filter(names == "A_2") %>% pull(x) - (qr_width*ratio)*dx_12
+  y6 = df %>% filter(names == "A_2") %>% pull(y) - (qr_width*ratio)*dy_12
+  x7 = df %>% filter(names == "A_3") %>% pull(x) - (qr_width*ratio)*dx_34
+  y7 = df %>% filter(names == "A_3") %>% pull(y) - (qr_width*ratio)*dy_34
+  x8 = df %>% filter(names == "A_4") %>% pull(x) - (qr_width*ratio)*dx_34
+  y8 = df %>% filter(names == "A_4") %>% pull(y) - (qr_width*ratio)*dy_34
   
-  
-  output<-data.frame(x5 = c(x5_1,x5_2),
-                     x6 = c(x6_1,x6_2),
-                     x7 = c(x7_1,x7_2),
-                     x8 = c(x8_1,x8_2),
-                     y5 = c(y5_1,y5_2),
-                     y6 = c(y6_1,y6_2),
-                     y7 = c(y7_1,y7_2),
-                     y8 = c(y8_1,y8_2)
-                     ) %>% 
-    pivot_longer(everything(),names_to = "pts", values_to = "value") %>%   
-    mutate(axis = substr(pts,1,1),
-           pts = substr(pts,2,2),) %>% 
-    group_by(pts,axis) %>%
-    mutate(rep = c(1,2)) %>%
-    ungroup()
-    # mutate(pts = paste0(pts,"_",rep)) %>% 
-    # select(-rep) %>% 
-    # pivot_wider(names_from = axis, values_from = value)
-  
-for (i in 1:4) {
-  pts_a<-output[which(output$pts == unique(output$pts)[i]),]
-  
-  if(i == 1){
-    output_coord<-data.frame(x =pts_a %>% filter(axis == "x",
-                           rep == 1) %>% 
-                      pull(value),
-                      y=pts_a %>% filter(axis == "y",
-                           rep == 1) %>% 
-                      pull(value),
-                      name = paste0("A_",unique(output$pts)[i],"_1"))
-    output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 1) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 2) %>% 
-                      pull(value),
-           name = paste0("A_",unique(output$pts)[i],"_2"))
-   
-  output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 2) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 2) %>% 
-                      pull(value),
-                      name = paste0("A_",unique(output$pts)[i],"_3"))
-  
-  output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 2) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 1) %>% 
-                      pull(value),
-                      name = paste0("A_",unique(output$pts)[i],"_4")) 
-  }else{
-    output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 1) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 1) %>% 
-                      pull(value),
-           name = paste0("A_",unique(output$pts)[i],"_1"))
-    
-   output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 1) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 2) %>% 
-                      pull(value),
-           name = paste0("A_",unique(output$pts)[i],"_2"))
-   
-  output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 2) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 2) %>% 
-                      pull(value),
-                      name = paste0("A_",unique(output$pts)[i],"_3"))
-  
-  output_coord[nrow(output_coord)+1,]<- c(pts_a %>% filter(axis == "x",
-                           rep == 2) %>% 
-                      pull(value),
-             pts_a %>% filter(axis == "y",
-                           rep == 1) %>% 
-                      pull(value),
-                      name = paste0("A_",unique(output$pts)[i],"_4"))  
-  }
-   
-}  
-output_coord <- output_coord %>%
+  new_points <- data.frame(x = c(x5,x6,x7,x8),
+                        y = c(y5, y6, y7 ,y8),
+                        names = paste0("A_",c(5:8)))%>%
   mutate(x = as.numeric(x),
-         y = as.numeric(y))
+         y = as.numeric(y)) 
   
-return(output_coord)
+ new_points_sf <- new_points %>% 
+    st_as_sf(coords =c("x","y"))
+  
+  rot = function(a){matrix(c(cos(a), sin(a), -sin(a), cos(a)), 2, 2)}
+  
+  ncg = st_geometry(new_points_sf)
+  cntrd = st_geometry(centroid_pts)
+  
+  for (i in c(1,2,3)){
+    ncg2 = (ncg - cntrd) * rot(i*pi/2) + cntrd
+    
+    ncg2_df<-ncg2%>% as.data.frame() %>% 
+    dplyr::mutate(x = sf::st_coordinates(geometry)[,1],
+                y = sf::st_coordinates(geometry)[,2],
+                names = paste0("A_",c(5:8))) %>% 
+    select(-geometry) %>% 
+    mutate(set = i)
+    
+    if(i == 1){
+      
+      new_points_rep<-rbind(new_points %>% 
+    mutate(set = 0),ncg2_df)
+      
+    }else{
+      new_points_rep<-rbind(new_points_rep,ncg2_df)
+    }
+  }
+  
+return(new_points_rep)
 }
 
 
-test <- Coordinate_panel(df)
+coord_Panel <- Coordinate_panel(img_rast) 
 
-test <- test %>%
-  filter(name == "A_5_3"|
-         name == "A_6_3"|
-         name == "A_7_3"|
-         name == "A_8_3")
+centroid_set<-coord_Panel %>% 
+  group_by(set) %>% 
+  reframe(x = mean(x),
+          y = mean(y))
 
 
-ggplot()+
+plot_possible_panel<-ggplot()+
   geom_spatraster(data = img_rast, aes(fill = value))+
   labs(fill = "DN")+
   scale_fill_gradientn(
@@ -687,13 +654,15 @@ ggplot()+
     na.value = "transparent",
     trans = "sqrt"
   )+
-  geom_point(data = test, aes(x =x , y = y), color = "red", size = 3)+
-  geom_text(data = test, aes(x =x+30 , y = y+30, label = name), fontface = "bold",color = "red", size = 6)+
+  geom_point(data = coord_Panel, aes(x =x , y = y), color = "red", size = 3)+
+  geom_label(data = centroid_set, aes(x =x , y = y, label = set), fontface = "bold",color = "red", size = 8)+
   theme_void()+
   theme(legend.position = "none")+
   coord_equal()+
-  xlim(c(300,500))+
-  ylim(c(100, 300))
+  ylim(c(-100, 400))+
+  xlim(c(260,760))
+
+ggsave("Output/plot/exemple_multiple_Panel_estimation.png", plot_possible_panel, width = 10, height = 10)
 ```
 
 </details>

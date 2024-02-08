@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-08 14:54:35.664733)**
+**WORK IN PROGRESS (last update : 2024-02-08 17:18:09.205066)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -315,7 +315,7 @@ the Dual_MX_Images folder.
 ``` r
 img_list<-list.files("Dual_MX_Images", pattern = ".tif",recursive = T,full.names = T)
 
-for(i in 1:length(img_list)){
+for(i in 1:length(img_list)) {
   img_raw<-rast(img_list[i])
   img_map<-row_gradient_map(img_raw)
   img_corrected<-img_raw*img_map
@@ -811,3 +811,47 @@ for(i in 1:length(list_img)){
 ```
 
 </details>
+
+### Reflectance Calibration
+
+<details>
+<summary>Code</summary>
+
+``` r
+RAW_to_Reflectance<-function(RAW){
+  
+  if(typeof(RAW) == "S4"){
+    path<-gsub(paste0(getwd(),"/"),"",sources(RAW))
+  }else{
+    path <- RAW
+    RAW<-rast(path,warn=F)
+  }
+  
+  L<-DN_to_Radiance(RAW)
+  Band_wv<-exif_read(path)$CentralWavelength
+  
+  ratio<-read.csv("Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv") %>% 
+    filter(wv == Band_wv) %>% 
+    pull(ratio)
+  
+  Reflectance_Image<-L*ratio
+  
+  writeRaster(Reflectance_Image,paste0("Output/Reflectance/R_",gsub(".*/","",path)))
+}  
+
+list_img<-list.files("Dual_MX_Images", pattern = ".tif", recursive = T, full.names = T)
+
+for(i in 1:length(list_img)){
+ RAW<-list_img[i] %>% 
+  rast() 
+ reflectance<-RAW_to_Reflectance(RAW) 
+}
+```
+
+</details>
+
+The reflectance values obtained through this workflow seem to be really
+low. I’m wondering if they’re expressed in sr^-1, considering that the
+unit of radiance is W/m^2/nm/sr. This kind of reflectance is referred to
+as remote sensing reflectance. I’m contemplating whether I need to
+multiply these values by Pi to obtain the surface reflectance…

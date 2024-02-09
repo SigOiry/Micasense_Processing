@@ -514,15 +514,14 @@ plot_qr<-ggplot()+
 ggsave("Output/plot/exemple_QR_detection.png", plot_qr, width = 10, height = 10)
 
 ```
+
 <img src="Output/plot/exemple_multiple_Panel_estimation.png" width="30%" align="left" style="padding-left:0px;background-color:white;"/>
 
 Now, we need to determine the coordinates of the calibration panel relative to the coordinates of the QR code. The issue we face is that we cannot determine the orientation of the QR code, and therefore, we can't ascertain in which direction the reflectance calibration panel is situated. We need to explore each possibility.
 
 <img src="Output/plot/exemple_multiple_Panel_estimation2.png" width="30%" align="right" style="padding-left:0px;background-color:white;"/>
 
-That's exactly the purpose of the `Coordinate_panel()` function. It takes an image as input and estimates the coordinates of four possible positions for the calibration panel. Then, it calculates the standard deviation of the radiance at these four potential positions. The polygon that is given as the output of the `Coordinate_panel()` function is the one where the standard deviation of the radiance is the lowest.If no qr code is detected on the image, NA is return. 
-
-
+That's exactly the purpose of the `Coordinate_panel()` function. It takes an image as input and estimates the coordinates of four possible positions for the calibration panel. Then, it calculates the standard deviation of the radiance at these four potential positions. The polygon that is given as the output of the `Coordinate_panel()` function is the one where the standard deviation of the radiance is the lowest.If no qr code is detected on the image, NA is return.
 
 ```{r Coordinate_panel}
 #| echo: true
@@ -706,10 +705,9 @@ ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel
 
 ```
 
-
 ### Radiance to reflectance conversion factor
 
-We need to retrieve a conversion factor for each band to convert radiance data to reflectance. This factor is simply a ratio between the radiance of the reflectance panel and the known reflectance of this panel. The reflectance values for the calibration panel are provided by MicaSense and are specific to each individual panel. 
+We need to retrieve a conversion factor for each band to convert radiance data to reflectance. This factor is simply a ratio between the radiance of the reflectance panel and the known reflectance of this panel. The reflectance values for the calibration panel are provided by MicaSense and are specific to each individual panel.
 
 This code create a dataframe with reflectance data of our calibration panel at each wavelength.
 
@@ -727,7 +725,7 @@ ref_panel<-data.frame(wv = c(444,475,531,560,650,668,705,717,740,842),
 write.csv(ref_panel, "Output/Reflectance_Panel/RP05-2025214-OB.csv", row.names = F)
 ```
 
-The following function takes a RAW image as input and outputs the ratio used to convert radiance to reflectance (if a calibration panel is found in the image). If you loop this function across the bands that include a calibration panel, it will provide you with the ratio for each wavelength needed to transform radiance values into reflectance value (the result is stored in `Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv`: 
+The following function takes a RAW image as input and outputs the ratio used to convert radiance to reflectance (if a calibration panel is found in the image). If you loop this function across the bands that include a calibration panel, it will provide you with the ratio for each wavelength needed to transform radiance values into reflectance value (the result is stored in `Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv`:
 
 ```{r Radiance to Reflectance Ratio}
 #| echo: true
@@ -839,5 +837,3 @@ for(i in 1:length(list_img)){
 }
 
 ```
-
-

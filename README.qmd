@@ -705,12 +705,22 @@ ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel
 
 ```
 
-### Radiance to reflectance conversion factor
+### Radiance to reflectance calibration factor
 
-We need to retrieve a conversion factor for each band to convert radiance data to reflectance. This factor is simply a ratio between the radiance of the reflectance panel and the known reflectance of this panel. The reflectance values for the calibration panel are provided by MicaSense and are specific to each individual panel.
+We need to retrieve a calibration factor for each band ($F_i$) to convert radiance data to reflectance. This factor is simply a ratio between the radiance of the reflectance panel ($avg(L_i)$) and the known reflectance of this panel ($P_i$). The reflectance values for the calibration panel are provided by MicaSense and are specific to each individual panel.
+The transfer function of radiance to reflectance for the each band is:
 
-This code create a dataframe with reflectance data of our calibration panel at each wavelength.
+$$
+F_i = \frac{P_i}{avg(L_i)}
+$$
+where:
 
+$F_i$ is the reflectance calibration factor for band i
+$P_i$ is the reflectance of the CRP for the ith band (from the calibration data of the panel provided by MicaSense)
+$avg(L_i)$ is the average value of the radiance for the pixels inside the panel for band i
+
+
+This code create a dataframe with reflectance data of our calibration panel at each wavelength : 
 ```{r Reflectance references}
 #| echo: true
 #| warning: false
@@ -725,7 +735,7 @@ ref_panel<-data.frame(wv = c(444,475,531,560,650,668,705,717,740,842),
 write.csv(ref_panel, "Output/Reflectance_Panel/RP05-2025214-OB.csv", row.names = F)
 ```
 
-The following function takes a RAW image as input and outputs the ratio used to convert radiance to reflectance (if a calibration panel is found in the image). If you loop this function across the bands that include a calibration panel, it will provide you with the ratio for each wavelength needed to transform radiance values into reflectance value (the result is stored in `Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv`:
+The following function takes a RAW image as input and outputs the calibration factor ($F_i$) used to convert radiance to reflectance (if a calibration panel is found in the image). If you loop this function across the bands that include a calibration panel, it will provide you with the calibration factor ($F_i$) for each wavelength needed to transform radiance values into reflectance value (the result is stored in `Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv`:
 
 ```{r Radiance to Reflectance Ratio}
 #| echo: true
@@ -800,6 +810,8 @@ for(i in 1:length(list_img)){
 ```
 
 ### Reflectance Calibration
+
+The following lines of code iterate over all radiance images and multiply each by the calibration factor ($F_i$) corresponding to their wavelength. This process converts the images to reflectance.
 
 ```{r Reflectance Calibration}
 #| echo: true

@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-09 14:06:54.394019)**
+**WORK IN PROGRESS (last update : 2024-02-09 14:38:38.91197)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -709,16 +709,34 @@ ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel
 
 </details>
 
-### Radiance to reflectance conversion factor
+### Radiance to reflectance calibration factor
 
-We need to retrieve a conversion factor for each band to convert
-radiance data to reflectance. This factor is simply a ratio between the
-radiance of the reflectance panel and the known reflectance of this
-panel. The reflectance values for the calibration panel are provided by
-MicaSense and are specific to each individual panel.
+We need to retrieve a calibration factor for each band
+(![F_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;F_i "F_i"))
+to convert radiance data to reflectance. This factor is simply a ratio
+between the radiance of the reflectance panel
+(![avg(L_i)](https://latex.codecogs.com/png.image?%5Cbg_black&space;avg%28L_i%29 "avg(L_i)"))
+and the known reflectance of this panel
+(![P_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;P_i "P_i")).
+The reflectance values for the calibration panel are provided by
+MicaSense and are specific to each individual panel. The transfer
+function of radiance to reflectance for the each band is:
+
+![F_i = \frac{P_i}{avg(L_i)}](https://latex.codecogs.com/png.image?%5Cbg_black&space;F_i%20%3D%20%5Cfrac%7BP_i%7D%7Bavg%28L_i%29%7D "F_i = \frac{P_i}{avg(L_i)}")
+
+where:
+
+![F_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;F_i "F_i")
+is the reflectance calibration factor for band i
+![P_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;P_i "P_i")
+is the reflectance of the CRP for the ith band (from the calibration
+data of the panel provided by MicaSense)
+![avg(L_i)](https://latex.codecogs.com/png.image?%5Cbg_black&space;avg%28L_i%29 "avg(L_i)")
+is the average value of the radiance for the pixels inside the panel for
+band i
 
 This code create a dataframe with reflectance data of our calibration
-panel at each wavelength.
+panel at each wavelength :
 
 <details>
 <summary>Code</summary>
@@ -734,12 +752,15 @@ write.csv(ref_panel, "Output/Reflectance_Panel/RP05-2025214-OB.csv", row.names =
 
 </details>
 
-The following function takes a RAW image as input and outputs the ratio
+The following function takes a RAW image as input and outputs the
+calibration factor
+(![F_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;F_i "F_i"))
 used to convert radiance to reflectance (if a calibration panel is found
 in the image). If you loop this function across the bands that include a
-calibration panel, it will provide you with the ratio for each
-wavelength needed to transform radiance values into reflectance value
-(the result is stored in
+calibration panel, it will provide you with the calibration factor
+(![F_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;F_i "F_i"))
+for each wavelength needed to transform radiance values into reflectance
+value (the result is stored in
 `Output/Reflectance_Panel/Radiance_to_Reflectance_Ratio.csv`:
 
 <details>
@@ -813,6 +834,12 @@ for(i in 1:length(list_img)){
 </details>
 
 ### Reflectance Calibration
+
+The following lines of code iterate over all radiance images and
+multiply each by the calibration factor
+(![F_i](https://latex.codecogs.com/png.image?%5Cbg_black&space;F_i "F_i"))
+corresponding to their wavelength. This process converts the images to
+reflectance.
 
 <details>
 <summary>Code</summary>

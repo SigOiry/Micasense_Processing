@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-09 14:38:38.91197)**
+**WORK IN PROGRESS (last update : 2024-02-09 17:07:57.788931)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -47,6 +47,13 @@ require(terra)
 require(patchwork)
 require(opencv) # install.packages("opencv", repos = "https://ropensci.r-universe.dev")
 require(sf)
+require(reticulate)
+
+### Setup Python Environnement and packages
+# virtualenv_create("myenv")
+
+# py_install("opencv")
+# py_install("matplotlib")
 ```
 
 </details>
@@ -135,6 +142,8 @@ for (i in 1:nrow(image_df)){
 | Radiometric_Calibration | Optical parameter used for the row gradient correction |            |                                                                                                                                       imager-specific calibrations                                                                                                                                       |
 
 Description of the metadata extracted from micasense images
+
+# Radiometric Correction
 
 ## Vignetting correction <img src="Output/plot/exemple_vignetting.png" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
 
@@ -873,6 +882,84 @@ for(i in 1:length(list_img)){
   rast() 
  reflectance<-RAW_to_Reflectance(RAW) 
 }
+```
+
+</details>
+
+# Geometric Correction
+
+Now that all images have been corrected to reflectance, we need to
+orthorectify and align all bands of the same image.
+
+## Undistorting images
+
+We need to remove lens distortion effects from images for some
+processing workflows, such as band-to-band image alignment. Generally
+for photogrammetry processes on raw (or radiance/reflectance) images,
+this step is not required, as the photogrammetry process will optimize a
+lens distortion model as part of it’s bulk bundle adjustment.
+
+**MARCHE PAAAAAAAAASSSSSSS**
+
+<details>
+<summary>Code</summary>
+
+``` r
+img<-"Output/Reflectance/R_IMG_0688_9.tif" %>% 
+  rast()
+
+meta<-exif_read("Dual_MX_Images/Blue/IMG_0688_9.tif")
+
+focal_length_mm <- function(meta){
+  units = meta$PerspectiveFocalLengthUnits
+  if (units == "mm") {
+    local_focal_length_mm <- meta$PerspectiveFocalLength
+  }else{
+    focal_length_px <- meta$PerspectiveFocalLength
+    fp_x_resolution <- meta$FocalPlaneXResolution
+    local_focal_length_mm <- focal_length_px / fp_x_resolution
+  }
+  
+  return(local_focal_length_mm)
+}
+
+
+
+distortion_parameters <- as.numeric(meta$PerspectiveDistortion[[1]])
+pp = as.numeric(strsplit(meta$PrincipalPoint, ",")[[1]])
+focal_plane_x_resolution <-meta$FocalPlaneXResolution
+focal_plane_y_resolution <-meta$FocalPlaneYResolution
+cX <- pp[1] * focal_plane_x_resolution
+cY <- pp[2] * focal_plane_y_resolution
+fx <- focal_length_mm(meta)*focal_plane_x_resolution
+fy <- focal_length_mm(meta)*focal_plane_y_resolution
+h <- meta$ImageHeight
+w <-meta$ImageWidth
+cam_mat <- matrix(rep(0,9),ncol = 3, nrow = 3)
+cam_mat[1, 1] = fx
+cam_mat[2, 2] = fy
+cam_mat[3, 3] = 1.0
+cam_mat[1, 3] = cX
+cam_mat[2, 3] = cY
+
+dist_coeffs = matrix(distortion_parameters[c(1, 2, 4, 5, 3)], nrow = 1)
+```
+
+</details>
+<details>
+<summary>Code</summary>
+
+``` python
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(r.cam_mat, r.dist_coeffs, (r.w, r.h), 1)
+map1, map2 = cv2.initUndistortRectifyMap(r.cam_mat, r.dist_coeffs,np.eye(3), new_cam_mat,(r.w, r.h),cv2.CV_32F)
+
+image = plt.imread("Output\Reflectance\R_IMG_0688_9.tif")
+
+undistortedReflectance  = cv2.remap(image,map1, map2, cv2.INTER_LINEAR)
 ```
 
 </details>

@@ -43,10 +43,10 @@ require(sf)
 require(reticulate)
 
 ### Setup Python Environnement and packages
-virtualenv_create("myenv")
+# virtualenv_create("myenv")
 
-py_install("opencv")
-py_install("matplotlib")
+# py_install("opencv")
+# py_install("matplotlib")
 
 ```
 
@@ -870,6 +870,10 @@ We need to remove lens distortion effects from images for some processing workfl
 **MARCHE PAAAAAAAAASSSSSSS**
 
 ```{r}
+#| echo: true
+#| warning: false
+#| eval: false
+#| code-fold: true
 
 img<-"Output/Reflectance/R_IMG_0688_9.tif" %>% 
   rast()
@@ -910,13 +914,15 @@ cam_mat[2, 3] = cY
 
 dist_coeffs = matrix(distortion_parameters[c(1, 2, 4, 5, 3)], nrow = 1)
 
-test<-py$undistortedReflectance
-
-plot(rast(test))
 
 ```
 
 ```{python}
+#| echo: true
+#| warning: false
+#| eval: false
+#| code-fold: true
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt

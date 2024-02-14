@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-09 17:07:57.788931)**
+**WORK IN PROGRESS (last update : 2024-02-14 18:13:34.692429)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -53,6 +53,7 @@ require(reticulate)
 # virtualenv_create("myenv")
 
 # py_install("opencv")
+# system("pip install opencv-python")
 # py_install("matplotlib")
 ```
 
@@ -860,7 +861,7 @@ RAW_to_Reflectance<-function(RAW){
     path<-gsub(paste0(getwd(),"/"),"",sources(RAW))
   }else{
     path <- RAW
-    RAW<-rast(path,warn=F)
+    RAW<-rast(path)
   }
   
   L<-DN_to_Radiance(RAW)
@@ -891,24 +892,51 @@ for(i in 1:length(list_img)){
 Now that all images have been corrected to reflectance, we need to
 orthorectify and align all bands of the same image.
 
-## Undistorting images
+## Undistorting images <img src="Output/plot/Undist_gif.gif" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
 
 We need to remove lens distortion effects from images for some
 processing workflows, such as band-to-band image alignment. Generally
 for photogrammetry processes on raw (or radiance/reflectance) images,
 this step is not required, as the photogrammetry process will optimize a
-lens distortion model as part of it’s bulk bundle adjustment.
+lens distortion model as part of it’s bulk bundle adjustment. To achieve
+this, we will use the `getOptimalNewCameraMatrix()` and `undistort()`
+function of the `opencv` package. However, the `opencv` library of R is
+not as developed has the `opencv` package in python and therefore those
+two function are not available in R. To overcome this issues I use
+`Reticulate` to create a link between an R environment and a Python
+environment. This allows me to have chunks of code in both R and Python
+and to be able to pass variables between these two languages. To do
+this, you need to set up a Python environment on your machine first.
 
-**MARCHE PAAAAAAAAASSSSSSS**
+The code below defines a Python function used the undistort images…
+
+<details>
+<summary>Code</summary>
+
+``` python
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def Undistort_Ref(path_in, path_out,cam_mat, dist_coeffs,w,h):
+  new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(cam_mat, dist_coeffs, (w, h), 1, (w, h))
+  image = cv2.imread(path_in,cv2.IMREAD_UNCHANGED)
+  image_corrige = cv2.undistort(image,cam_mat,dist_coeffs,None,new_cam_mat)
+  cv2.imwrite(path_out, image_corrige)
+```
+
+</details>
+
+…and the code below defines an R function that takes as input a string
+specifying the location of RAW images and outputs undistorted
+reflectance TIFF files.
 
 <details>
 <summary>Code</summary>
 
 ``` r
-img<-"Output/Reflectance/R_IMG_0688_9.tif" %>% 
-  rast()
-
-meta<-exif_read("Dual_MX_Images/Blue/IMG_0688_9.tif")
+img_path<-"Dual_MX_Images"
 
 focal_length_mm <- function(meta){
   units = meta$PerspectiveFocalLengthUnits
@@ -923,43 +951,92 @@ focal_length_mm <- function(meta){
   return(local_focal_length_mm)
 }
 
+Undistort <- function(img_path){
+  
+  filelist<-list.files(img_path, pattern = ".tif", recursive = T, full.names = T)
+  
+  for(i in 1:length(filelist)){
+    
+    RAW_to_Reflectance(filelist[i])
+    path_in<-paste0("Output/Reflectance/R_",gsub(".*/","",filelist[i]))
+    path_out<-path_in %>% 
+      gsub("Reflectance/R_","undist/",.)
+    
+    meta<-exif_read(filelist[i])
+    
+    distortion_parameters <- as.numeric(meta$PerspectiveDistortion[[1]])
+    pp = as.numeric(strsplit(meta$PrincipalPoint, ",")[[1]])
+    focal_plane_x_resolution <-meta$FocalPlaneXResolution
+    focal_plane_y_resolution <-meta$FocalPlaneYResolution
+    cX <- pp[1] * focal_plane_x_resolution
+    cY <- pp[2] * focal_plane_y_resolution
+    fx <- focal_length_mm(meta)*focal_plane_x_resolution
+    fy <- focal_length_mm(meta)*focal_plane_y_resolution
+    h <- meta$ImageHeight
+    w <-meta$ImageWidth
+    cam_mat <- matrix(rep(0,9),ncol = 3, nrow = 3)
+    cam_mat[1, 1] = fx
+    cam_mat[2, 2] = fy
+    cam_mat[3, 3] = 1.0
+    cam_mat[1, 3] = cX
+    cam_mat[2, 3] = cY
+
+    dist_coeffs = matrix(distortion_parameters[c(1, 2, 4, 5, 3)], nrow = 1)
+    
+    
+    py$Undistort_Ref(path_in, path_out, cam_mat, dist_coeffs,w,h)
+  }
+  
+  
+}
+
+#### Apply distortion correction
+Undistort(img_path)
+
+img2 <- "Output/undist/IMG_0002_1.tif" %>% 
+  rast()
+names(img2)<-"value"
+values(img2)[values(img2$value) < 0.02 0] = NA
+
+img1 <- "Output/Reflectance/R_IMG_0002_1.tif" %>% 
+  rast()
+names(img1)<-"value"
 
 
-distortion_parameters <- as.numeric(meta$PerspectiveDistortion[[1]])
-pp = as.numeric(strsplit(meta$PrincipalPoint, ",")[[1]])
-focal_plane_x_resolution <-meta$FocalPlaneXResolution
-focal_plane_y_resolution <-meta$FocalPlaneYResolution
-cX <- pp[1] * focal_plane_x_resolution
-cY <- pp[2] * focal_plane_y_resolution
-fx <- focal_length_mm(meta)*focal_plane_x_resolution
-fy <- focal_length_mm(meta)*focal_plane_y_resolution
-h <- meta$ImageHeight
-w <-meta$ImageWidth
-cam_mat <- matrix(rep(0,9),ncol = 3, nrow = 3)
-cam_mat[1, 1] = fx
-cam_mat[2, 2] = fy
-cam_mat[3, 3] = 1.0
-cam_mat[1, 3] = cX
-cam_mat[2, 3] = cY
+img1_plot<-ggplot()+
+  geom_spatraster(data = img1, aes(fill = value))+
+  labs(fill = "DN")+
+  scale_fill_gradientn(
+    colours = grey(1:100 / 100),
+    na.value = "transparent"
+    # trans = "sqrt"
+  )+
+  theme_void()+
+  geom_label(aes(x = 1100, y = 900, label = "Before"), size = 15)+
+  theme(legend.position = "none")+
+  coord_sf()
 
-dist_coeffs = matrix(distortion_parameters[c(1, 2, 4, 5, 3)], nrow = 1)
-```
+img2_plot<-ggplot()+
+  geom_spatraster(data = img2, aes(fill = value))+
+  labs(fill = "DN")+
+  scale_fill_gradientn(
+    colours = grey(0:100 / 100),
+    na.value = "transparent"
+    # trans = "sqrt"
+  )+
+  theme_void()+
+  geom_label(aes(x = 1100, y = 900, label = "After"), size = 15)+
+  theme(legend.position = "none")+
+  coord_sf()
 
-</details>
-<details>
-<summary>Code</summary>
+ggsave("Output/plot/Undist_before.png",img1_plot)
+ggsave("Output/plot/Undist_after.png",img2_plot)
 
-``` python
-import cv2
-import numpy as np
-import matplotlib.pyplot as plt
 
-new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(r.cam_mat, r.dist_coeffs, (r.w, r.h), 1)
-map1, map2 = cv2.initUndistortRectifyMap(r.cam_mat, r.dist_coeffs,np.eye(3), new_cam_mat,(r.w, r.h),cv2.CV_32F)
-
-image = plt.imread("Output\Reflectance\R_IMG_0688_9.tif")
-
-undistortedReflectance  = cv2.remap(image,map1, map2, cv2.INTER_LINEAR)
+magick::image_read(c("Output/plot/Undist_before.png", "Output/plot/Undist_after.png")) %>% 
+  magick::image_join() %>% 
+  magick::image_animate(fps = 1) %>% 
+  magick::image_write("Output/plot/Undist_gif.gif")
 ```
 
 </details>

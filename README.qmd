@@ -46,7 +46,8 @@ require(reticulate)
 # virtualenv_create("myenv")
 
 # py_install("opencv")
-# py_install("matplotlib")
+system("pip install opencv-python")
+py_install("matplotlib")
 
 ```
 
@@ -135,8 +136,8 @@ for (i in 1:nrow(image_df)){
 
 : Description of the metadata extracted from micasense images
 
-
 # Radiometric Correction
+
 ## Vignetting correction <img src="Output/plot/exemple_vignetting.png" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
 
 Vignetting refers to the reduction of image brightness toward the periphery compared to the image center, a phenomenon due to the lens properties of the camera. Before converting each image to radiance, the digital numbers need to be corrected for this vignetting effect.
@@ -716,20 +717,16 @@ ggsave("Output/plot/exemple_multiple_Panel_estimation2.png", plot_possible_panel
 
 ### Radiance to reflectance calibration factor
 
-We need to retrieve a calibration factor for each band ($F_i$) to convert radiance data to reflectance. This factor is simply a ratio between the radiance of the reflectance panel ($avg(L_i)$) and the known reflectance of this panel ($P_i$). The reflectance values for the calibration panel are provided by MicaSense and are specific to each individual panel.
-The transfer function of radiance to reflectance for the each band is:
+We need to retrieve a calibration factor for each band ($F_i$) to convert radiance data to reflectance. This factor is simply a ratio between the radiance of the reflectance panel ($avg(L_i)$) and the known reflectance of this panel ($P_i$). The reflectance values for the calibration panel are provided by MicaSense and are specific to each individual panel. The transfer function of radiance to reflectance for the each band is:
 
 $$
 F_i = \frac{P_i}{avg(L_i)}
-$$
-where:
+$$ where:
 
-$F_i$ is the reflectance calibration factor for band i
-$P_i$ is the reflectance of the CRP for the ith band (from the calibration data of the panel provided by MicaSense)
-$avg(L_i)$ is the average value of the radiance for the pixels inside the panel for band i
+$F_i$ is the reflectance calibration factor for band i $P_i$ is the reflectance of the CRP for the ith band (from the calibration data of the panel provided by MicaSense) $avg(L_i)$ is the average value of the radiance for the pixels inside the panel for band i
 
+This code create a dataframe with reflectance data of our calibration panel at each wavelength :
 
-This code create a dataframe with reflectance data of our calibration panel at each wavelength : 
 ```{r Reflectance references}
 #| echo: true
 #| warning: false
@@ -865,7 +862,7 @@ Now that all images have been corrected to reflectance, we need to orthorectify 
 
 ## Undistorting images
 
-We need to remove lens distortion effects from images for some processing workflows, such as band-to-band image alignment. Generally for photogrammetry processes on raw (or radiance/reflectance) images, this step is not required, as the photogrammetry process will optimize a lens distortion model as part of it's bulk bundle adjustment. 
+We need to remove lens distortion effects from images for some processing workflows, such as band-to-band image alignment. Generally for photogrammetry processes on raw (or radiance/reflectance) images, this step is not required, as the photogrammetry process will optimize a lens distortion model as part of it's bulk bundle adjustment.
 
 **MARCHE PAAAAAAAAASSSSSSS**
 
@@ -914,6 +911,7 @@ cam_mat[2, 3] = cY
 
 dist_coeffs = matrix(distortion_parameters[c(1, 2, 4, 5, 3)], nrow = 1)
 
+py$Undistort_Ref()
 
 ```
 
@@ -927,13 +925,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(r.cam_mat, r.dist_coeffs, (r.w, r.h), 1)
-map1, map2 = cv2.initUndistortRectifyMap(r.cam_mat, r.dist_coeffs,np.eye(3), new_cam_mat,(r.w, r.h),cv2.CV_32F)
 
-image = plt.imread("Output\Reflectance\R_IMG_0688_9.tif")
-
-undistortedReflectance  = cv2.remap(image,map1, map2, cv2.INTER_LINEAR)
-
+def Undistort_Ref():
+  new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(r.cam_mat, r.dist_coeffs, (r.w, r.h), 1, (r.w, r.h))
+  image = cv2.imread('Output/Reflectance/R_IMG_0688_9.tif',cv2.IMREAD_UNCHANGED)
+  image_corrige = cv2.undistort(image,r.cam_mat,r.dist_coeffs,None,new_cam_mat)
+  cv2.imwrite('Output/undist/R_IMG_0688_9.tif', image_corrige)
 ```
-
-

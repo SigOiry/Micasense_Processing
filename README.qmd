@@ -122,7 +122,7 @@ for (i in 1:nrow(image_df)){
 ```
 
 |    Name of metadata     |                      Description                       |    Unit    |                                                                                                                                                 Comments                                                                                                                                                 |
-|:----------------:|:----------------:|:----------------:|:----------------:|
+|:--------:|:--------:|:--------:|:------------------------------------------:|
 |      Exposure_Time      |              Exposure time of the picture              |   Second   |                                                                                                                                                                                                                                                                                                          |
 |          Gain           |               Gain applied to the image                |  Unitless  |                                                                                                                                                                                                                                                                                                          |
 |       Resolution        |                Resolution of the image                 |   pixels   |                                                                                                                                                                                                                                                                                                          |
@@ -862,12 +862,11 @@ Now that all images have been corrected to reflectance, we need to orthorectify 
 
 ## Undistorting images <img src="Output/plot/Undist_gif.gif" width="50%" align="left" style="padding-left:10px;background-color:white;"/>
 
-We need to remove lens distortion effects from images for some processing workflows, such as band-to-band image alignment. Generally for photogrammetry processes on raw (or radiance/reflectance) images, this step is not required, as the photogrammetry process will optimize a lens distortion model as part of it's bulk bundle adjustment. 
+We need to remove lens distortion effects from images for some processing workflows, such as band-to-band image alignment. Generally for photogrammetry processes on raw (or radiance/reflectance) images, this step is not required, as the photogrammetry process will optimize a lens distortion model as part of it's bulk bundle adjustment.
 
-To achieve this, we will use the `getOptimalNewCameraMatrix()` and `undistort()` function of the `opencv` package. However, the `opencv` library of R is not as developed has the `opencv` package in python and therefore those two function are not available in R. 
+To achieve this, we will use the `getOptimalNewCameraMatrix()` and `undistort()` function of the `opencv` package. However, the `opencv` library of R is not as developed has the `opencv` package in python and therefore those two function are not available in R.
 
-To overcome this issues I use `Reticulate` to create a link between an R environment and a Python environment. This allows me to have chunks of code in both R and Python and to be able to pass variables between these two languages.
-To do this, you need to set up a Python environment on your machine first.
+To overcome this issues I use `Reticulate` to create a link between an R environment and a Python environment. This allows me to have chunks of code in both R and Python and to be able to pass variables between these two languages. To do this, you need to set up a Python environment on your machine first.
 
 The code below defines a Python function used the undistort images...
 
@@ -878,9 +877,6 @@ The code below defines a Python function used the undistort images...
 #| code-fold: true
 
 import cv2
-import numpy as np
-import matplotlib.pyplot as plt
-
 
 def Undistort_Ref(path_in, path_out,cam_mat, dist_coeffs,w,h):
   new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(cam_mat, dist_coeffs, (w, h), 1, (w, h))
@@ -957,7 +953,7 @@ Undistort(img_path)
 img2 <- "Output/undist/IMG_0002_1.tif" %>% 
   rast()
 names(img2)<-"value"
-values(img2)[values(img2$value) < 0.02 0] = NA
+values(img2)[values(img2$value) < 0.02] = NA
 
 img1 <- "Output/Reflectance/R_IMG_0002_1.tif" %>% 
   rast()
@@ -1004,4 +1000,49 @@ magick::image_read(c("Output/plot/Undist_before.png", "Output/plot/Undist_after.
 
 ```
 
+
+## Imgage alignment 
+
+```{r }
+Rereference_Band_Name<-"Red"
+
+meta_red<-meta %>% 
+  mutate(Image_Path = gsub("Dual_MX_Images/Blue","Output/undist",Image_Path),
+         Image_Path = gsub("Dual_MX_Images/Red","Output/undist",Image_Path))
+
+imageID<-unique(meta$Capture_ID)
+
+for(i in imageID){
+
+  meta_capture<-meta %>% 
+    dplyr::filter(Capture_ID == i)
+  
+  BandRef<-meta_capture %>% 
+    dplyr::filter(Band_Name == Rereference_Band_Name) %>% 
+    mutate(status =  "Reference")
+  
+  Band_to_align<-meta_capture %>% 
+    dplyr::filter(Band_Name != Rereference_Band_Name)%>% 
+    mutate(status =  "ToBeAligned")
+  
+  
+  for(ii in 1:nrow(Band_to_align)){
+    if(ii == 1){
+      pair<- rbind(BandRef,Band_to_align[ii,]) %>% 
+                     mutate(pair = ii)
+    }else{
+      a <-rbind(BandRef,Band_to_align[ii,]) %>% 
+                     mutate(pair = ii)
+      pair <- rbind(pair,a)
+            
+      
+    }
+  }
+  
+  
+exif$RigRelatives
+  
+  }
+
+```
 

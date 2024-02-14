@@ -1,7 +1,7 @@
 # Micasense RedEdge-MX DUAL processing
 Simon Oiry
 
-**WORK IN PROGRESS (last update : 2024-02-14 18:13:34.692429)**
+**WORK IN PROGRESS (last update : 2024-02-14 18:16:35.412381)**
 
 This workflow adapts the Micasense workflow for manual processing of
 images from the Micasense RedEdge-MX Dual camera. he original workflow,
@@ -898,15 +898,18 @@ We need to remove lens distortion effects from images for some
 processing workflows, such as band-to-band image alignment. Generally
 for photogrammetry processes on raw (or radiance/reflectance) images,
 this step is not required, as the photogrammetry process will optimize a
-lens distortion model as part of it’s bulk bundle adjustment. To achieve
-this, we will use the `getOptimalNewCameraMatrix()` and `undistort()`
-function of the `opencv` package. However, the `opencv` library of R is
-not as developed has the `opencv` package in python and therefore those
-two function are not available in R. To overcome this issues I use
-`Reticulate` to create a link between an R environment and a Python
-environment. This allows me to have chunks of code in both R and Python
-and to be able to pass variables between these two languages. To do
-this, you need to set up a Python environment on your machine first.
+lens distortion model as part of it’s bulk bundle adjustment.
+
+To achieve this, we will use the `getOptimalNewCameraMatrix()` and
+`undistort()` function of the `opencv` package. However, the `opencv`
+library of R is not as developed has the `opencv` package in python and
+therefore those two function are not available in R.
+
+To overcome this issues I use `Reticulate` to create a link between an R
+environment and a Python environment. This allows me to have chunks of
+code in both R and Python and to be able to pass variables between these
+two languages. To do this, you need to set up a Python environment on
+your machine first.
 
 The code below defines a Python function used the undistort images…
 

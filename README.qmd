@@ -122,7 +122,7 @@ for (i in 1:nrow(image_df)){
 ```
 
 |    Name of metadata     |                      Description                       |    Unit    |                                                                                                                                                 Comments                                                                                                                                                 |
-|:--------:|:--------:|:--------:|:------------------------------------------:|
+|:------------:|:------------:|:------------:|:-----------------------------:|
 |      Exposure_Time      |              Exposure time of the picture              |   Second   |                                                                                                                                                                                                                                                                                                          |
 |          Gain           |               Gain applied to the image                |  Unitless  |                                                                                                                                                                                                                                                                                                          |
 |       Resolution        |                Resolution of the image                 |   pixels   |                                                                                                                                                                                                                                                                                                          |
@@ -878,7 +878,7 @@ The code below defines a Python function used the undistort images...
 
 import cv2
 
-def Undistort_Ref(path_in, path_out,cam_mat, dist_coeffs,w,h):
+def Un distort_Ref(path_in, path_out,cam_mat, dist_coeffs,w,h):
   new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(cam_mat, dist_coeffs, (w, h), 1, (w, h))
   image = cv2.imread(path_in,cv2.IMREAD_UNCHANGED)
   image_corrige = cv2.undistort(image,cam_mat,dist_coeffs,None,new_cam_mat)
@@ -1000,11 +1000,454 @@ magick::image_read(c("Output/plot/Undist_before.png", "Output/plot/Undist_after.
 
 ```
 
+IN order to perform camera alignment, we might need to have metadata associated with each undistorted image. 
+The code below is used to copy exif from the raw image and paste it in the processeced image.
 
-## Imgage alignment 
+```{r}
+list_RAW <- list.files("Dual_MX_Images", pattern = ".tif", full.names = T, recursive = T) %>% 
+  as.data.frame() %>% 
+  rename(path_RAW = ".") %>% 
+  mutate(name = gsub(".*/","",path_RAW))
+list_undist <- list.files("Output/undist/", pattern = ".tif", full.names = T, recursive = T) %>% 
+  as.data.frame() %>% 
+  rename(path_undist = ".") %>% 
+  mutate(name = gsub(".*/","",path_undist))
+
+
+list<-list_RAW %>% 
+  left_join(list_undist, by = "name")
+
+
+for(i in 1:nrow(list)){
+  
+  system(paste("exiftool -tagsFromFile",list$path_RAW[i],"-xmp",list$path_undist[i]))
+  
+
+}
+
+for(i in 1:nrow(list)){
+  exif<-exif_read(list$path_undist[i])
+  
+  if(i==1){
+    output <- exif
+  }else{
+    exif<-exif[which(names(exif) %in% names(output))]
+    output<-rbind(output, exif)
+  }
+  
+}
+
+
+```
+
+## Imgage alignment
+
+
+```{r}
+RigRelatives = as.numeric(str_split(exif$RigRelatives,"," )[[1]])
+
+match = exif_read("Output/undist/IMG_0688_9.tif")
+ref = exif_read("Output/undist/IMG_0688_2.tif")
+
+a<-exif_read("Dual_MX_Images/Blue/IMG_0002_9.tif")
+
+meta = a
+meta$ImageSize
+```
+
+```{python rotations_degrees_to_rotation_matrix}
+import cv2
+import numpy as np
+
+
+def rotations_degrees_to_rotation_matrix(RigRelatives):
+  
+  cx = np.cos(np.deg2rad(RigRelatives[0]))
+  cy = np.cos(np.deg2rad(RigRelatives[1]))
+  cz = np.cos(np.deg2rad(RigRelatives[2]))
+  sx = np.sin(np.deg2rad(RigRelatives[0]))
+  sy = np.sin(np.deg2rad(RigRelatives[1]))
+  sz = np.sin(np.deg2rad(RigRelatives[2]))
+
+  Rx = np.mat([1, 0, 0,
+               0, cx, -sx,
+               0, sx, cx]).reshape(3, 3)
+  Ry = np.mat([cy, 0, sy,
+               0, 1, 0,
+               -sy, 0, cy]).reshape(3, 3)
+  Rz = np.mat([cz, -sz, 0,
+               sz, cz, 0,
+               0, 0, 1]).reshape(3, 3)
+  R = Rx * Ry * Rz
+  return R
+
+
+```
+
+```{python Principal_point_px}
+
+def focal_plane_resolution_px_per_mm(meta):
+  fp_x_resolution = float(meta.get('FocalPlaneXResolution'))
+  fp_y_resolution = float(meta.get('FocalPlaneYResolution'))
+  
+  return fp_x_resolution, fp_y_resolution
+
+def principal_point_px(meta):
+  
+    np.float_(meta.get("PrincipalPoint").replace(","," ").split())
+    center_x = np.float_(meta.get("PrincipalPoint").replace(","," ").split())[0] * focal_plane_resolution_px_per_mm(meta)[0]
+    center_y = np.float_(meta.get("PrincipalPoint").replace(","," ").split())[1] * focal_plane_resolution_px_per_mm(meta)[1]
+    
+    return center_x, center_y
+
+
+```
+
+```{python cv2_camera_matrix}
+
+def cv2_camera_matrix(meta):
+  center_x, center_y = principal_point_px(meta)
+  # set up camera matrix for cv2
+  cam_mat = np.zeros((3, 3))
+  cam_mat[0, 0] = meta.get("FocalLength") * focal_plane_resolution_px_per_mm(meta)[0]
+  cam_mat[1, 1] = meta.get("FocalLength") * focal_plane_resolution_px_per_mm(meta)[1]
+  cam_mat[2, 2] = 1.0
+  cam_mat[0, 2] = center_x
+  cam_mat[1, 2] = center_y
+
+  # set up distortion coefficients for cv2
+  return cam_mat
+
+
+```
+
+```{python cv2_distortion_coeff}
+
+def cv2_distortion_coeff(meta):
+  
+  nelem = np.array(meta.get('PerspectiveDistortion')).size
+  
+  return np.float_(np.array(meta.get("PerspectiveDistortion")[0]))[[0, 1, 3, 4, 2]]
+
+
+```
+
+```{python get_homography}
+
+def get_homography(match, ref, R = None, T = None):
+  R = rotations_degrees_to_rotation_matrix(np.float_(r.match.get("RigRelatives").replace(',', '').split()))
+  
+  if T is None:
+    T = np.zeros(3)
+    
+  R_ref = rotations_degrees_to_rotation_matrix(np.float_(r.ref.get("RigRelatives").replace(',', '').split()))
+  
+  A = np.zeros((4, 4))
+  A[0:3, 0:3] = np.dot(R_ref.T, R)
+  A[0:3, 3] = T
+  A[3, 3] = 1.
+  
+  C, _ = cv2.getOptimalNewCameraMatrix(cv2_camera_matrix(match),
+                                       cv2_distortion_coeff(match),
+                                       np.int_(match.get("ImageSize").split()),
+                                       1)
+  Cr, _ = cv2.getOptimalNewCameraMatrix(cv2_camera_matrix(ref),
+                                     cv2_distortion_coeff(ref),
+                                     np.int_(ref.get("ImageSize").split()),
+                                     1)
+                                     
+  CC = np.zeros((4, 4))
+  CC[0:3, 0:3] = C
+  CC[3, 3] = 1.
+  CCr = np.zeros((4, 4))
+  CCr[0:3, 0:3] = Cr
+  CCr[3, 3] = 1.
+  B = np.array(np.dot(CCr, np.dot(A, np.linalg.inv(CC))))
+  B[:, 2] = B[:, 2] - B[:, 3]
+  B = B[0:3, 0:3]
+  B = B / B[2, 2]
+  
+  return np.array(B)
+
+
+```
+
+```{python rig_xy_offset_in_px}
+import math
+
+def rig_xy_offset_in_px(meta):
+  pixel_pitch_mm_x = 1.0 / focal_plane_resolution_px_per_mm(meta)[0]
+  pixel_pitch_mm_y = 1.0 / focal_plane_resolution_px_per_mm(meta)[1]
+  px_fov_x = 2.0 * math.atan2(pixel_pitch_mm_x / 2.0, meta.get("FocalLength"))
+  px_fov_y = 2.0 * math.atan2(pixel_pitch_mm_y / 2.0, meta.get("FocalLength"))
+  t_x = math.radians(float(meta.get("RigRelatives").replace(",","").split()[0])) / px_fov_x
+  t_y = math.radians(float(meta.get("RigRelatives").replace(",","").split()[1])) / px_fov_y
+  return t_x, t_y
+
+
+```
+
+```{python Align}
+from skimage.filters import gaussian, rank
+from skimage.util import img_as_ubyte
+from skimage.morphology import disk
+
+def normalize(im, local_min=None, local_max=None):
+  width, height = im.shape
+  norm = np.zeros((width, height), dtype=np.float32)
+  if local_min is not None and local_max is not None:
+    norm = (im - local_min) / (local_max - local_min)
+  else:
+    cv2.normalize(im, dst=norm, alpha=0.0, beta=1.0, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+  norm[norm < 0.0] = 0.0
+  norm[norm > 1.0] = 1.0
+  return norm
+
+def local_normalize(im):
+  norm = img_as_ubyte(normalize(im))  # TODO: mainly using this as a type conversion, but it's expensive
+  width, _ = im.shape
+  disksize = int(width / 5)
+  if disksize % 2 == 0:
+      disksize = disksize + 1
+  footprint = disk(disksize)
+  norm2 = rank.equalize(norm, footprint=footprint)
+  return norm2
+
+def gradient(im, ksize=5):
+  im = local_normalize(im)
+  # im = normalize(im)
+  grad_x = cv2.Sobel(im, cv2.CV_32F, 1, 0, ksize=ksize)
+  grad_y = cv2.Sobel(im, cv2.CV_32F, 0, 1, ksize=ksize)
+  grad = cv2.addWeighted(np.absolute(grad_x), 0.5, np.absolute(grad_y), 0.5, 0)
+  return grad
+
+
+def align(pair,wrap_matrix):
+  
+  wrap_mode = cv2.MOTION_HOMOGRAPHY
+  max_iterations = int(pair['max_iteration'])
+  epsilon_threshold = pair['epsilon_threshold']
+  ref_index = pair['ref_index']
+  match_index = pair['match_index']
+  translations = np.float_(pair['translation'].split())
+  wrap_matrix_match = wrap_matrix.copy()
+  ref = cv2.imread(pair['ref_path'])
+  w = ref.shape[1]
+  
+  nol = int(w/(1280/3))-1
+  
+  wrap_matrix_match[0][2] /= (2 ** nol)
+  wrap_matrix_match[1][2] /= (2 ** nol)
+  
+  if ref_index != match_index:
+    
+    gray1 = cv2.imread(pair["ref_path"],cv2.IMREAD_UNCHANGED)
+    gray2 = cv2.imread(pair["match_path"],cv2.IMREAD_UNCHANGED)
+    
+    if gray2.shape[0] < gray1.shape[0]:
+      cv2.resize(gray2, None, fx=gray1.shape[0] / gray2.shape[0], fy=gray1.shape[0] / gray2.shape[0],interpolation=cv2.INTER_AREA)
+    
+    gray1_pyr = [gray1]
+    gray2_pyr = [gray2]
+    
+    for level in range(nol):
+      gray1_pyr[0] = gaussian(normalize(gray1_pyr[0]))
+      gray1_pyr.insert(0, cv2.resize(gray1_pyr[0], None, fx=1 / 2, fy=1 / 2,interpolation=cv2.INTER_AREA))
+      gray2_pyr[0] = gaussian(normalize(gray2_pyr[0]))
+      gray2_pyr.insert(0, cv2.resize(gray2_pyr[0], None, fx=1 / 2, fy=1 / 2,interpolation=cv2.INTER_AREA))
+    
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, max_iterations, epsilon_threshold)
+    
+    for level in range(nol + 1):
+      grad1 = gradient(gray1_pyr[level])
+      grad2 = gradient(gray2_pyr[level])
+      
+      try:
+        cc, warp_matrix = cv2.findTransformECC(grad1, grad2, wrap_matrix_match.astype(np.float32), wrap_mode, criteria,inputMask=None, gaussFiltSize=1)
+      
+      except TypeError:
+        cc, warp_matrix = cv2.findTransformECC(grad1, grad2, wrap_matrix_match.astype(np.float32), wrap_mode, criteria)
+        
+      if level != nol:  # scale up only the offset by a factor of 2 for the next (larger image) pyramid level
+        if wrap_mode == cv2.MOTION_HOMOGRAPHY:
+          warp_matrix = warp_matrix * np.array([[1, 1, 2], [1, 1, 2], [0.5, 0.5, 1]], dtype=np.float32)
+        else:
+            warp_matrix = warp_matrix * np.array([[1, 1, 2], [1, 1, 2]], dtype=np.float32)
+
+       
+  # return {'ref_index': pair['ref_index'],
+  #         'match_index': pair['match_index'],
+  #         'warp_matrix': warp_matrix}   
+  
+  width = gray2.shape[0]
+  height = gray2.shape[1] 
+  interpolation_mode=cv2.INTER_LANCZOS4
+  
+  img = cv2.imread(pair["match_path"])
+  
+  im_aligned = np.zeros((height, width), dtype=np.float32)
+
+  im_aligned = cv2.warpPerspective(img,warp_matrix,(width,height), flags=interpolation_mode + cv2.WARP_INVERSE_MAP)
+  
+  cv2.imwrite("Output/aligned/RE_16022024.tif", im_aligned)
+  
+  
+        
+```
+
+
+```{r}
+
+Rereference_Band_Name<-"Green"
+
+list_img<-list.files("Dual_MX_Images", recursive = T, full.names = T) %>% 
+  as.tibble() %>% 
+  rename(path = "value") %>% 
+  mutate(image_name = gsub(".*/","",path))
+
+
+for(i in 1:nrow(list_img)){
+  exif<-exif_read(list_img$path[i])
+  
+  if(i==1){
+    output <- exif
+  }else{
+    exif<-exif[which(names(exif) %in% names(output))]
+    output<-rbind(output, exif)
+  }
+}
+output<-output %>% as.tibble()
+
+
+for i in 1:length(unique(output$CaptureId)){
+  
+  capture <- output %>%
+    dplyr::filter(CaptureId == unique(CaptureId)[i]) %>% 
+    mutate(SourceFile = gsub("Dual_MX_Images/Blue","Output/undist",SourceFile),
+           SourceFile = gsub("Dual_MX_Images/Red","Output/undist",SourceFile))
+  
+  ref <- capture %>% 
+    dplyr::filter(BandName == Rereference_Band_Name)
+  
+  match_list<- capture %>% 
+    dplyr::filter(BandName != Rereference_Band_Name)
+  
+  warp_matrices<-list()
+  
+  for(ii in 1:nrow(capture)){
+    
+    wrap_matrice_img<-py$get_homography(ref,capture[ii,])
+    wrap_matrice_img <- wrap_matrice_img / wrap_matrice_img[2,2]
+    warp_matrices[[ii]] <-wrap_matrice_img
+    
+    translation = py$rig_xy_offset_in_px(capture[ii,])
+    
+    translation <- paste(translation[[1]],translation[[2]])
+    alignment_pairs = data.frame(max_iteration = 2500,
+                                 epsilon_threshold = 1e-9,
+                                 ref_index = ref$BandName,
+                                 ref_path = ref$SourceFile,
+                                 match_index = capture$BandName[ii],
+                                 match_path = capture$SourceFile[ii],
+                                 translation = translation)
+    
+    py$align(alignment_pairs,wrap_matrice_img)
+    
+  }
+  
+  
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{python}
+import cv2
+import numpy as np
+
+def ECC_align(path_reference, path_match):
+  
+  img_ref = cv2.imread("Output/undist/IMG_0688_4.tif",cv2.IMREAD_UNCHANGED)
+  img_match = cv2.imread("Output/undist/IMG_0688_9.tif",cv2.IMREAD_UNCHANGED)
+  
+  # img_ref_gray = cv2.cvtColor(img_ref,cv2.COLOR_BGR2GRAY)
+  # img_match_gray = cv2.cvtColor(img_match,cv2.COLOR_BGR2GRAY)
+  
+  size = img_ref.shape
+  
+  warp_mode = cv2.MOTION_HOMOGRAPHY
+  warp_matrix = np.eye(3, 3, dtype=np.float32)
+  number_of_iterations = 5000
+  termination_eps = 1e-10
+  
+  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations,  termination_eps)
+  
+  (cc, warp_matrix) = cv2.findTransformECC(img_ref,img_match,warp_matrix, warp_mode, criteria)
+  
+  img_match_corrected = cv2.warpPerspective(img_match,warp_matrix, (size[1],size[0]), flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP)
+
+  cv2.imwrite("Output/aligned/img3.tif", img_match_corrected)
+  
+
+```
+
 
 ```{r }
-Rereference_Band_Name<-"Red"
+Rereference_Band_Name<-"Green"
 
 meta_red<-meta %>% 
   mutate(Image_Path = gsub("Dual_MX_Images/Blue","Output/undist",Image_Path),
@@ -1034,15 +1477,18 @@ for(i in imageID){
       a <-rbind(BandRef,Band_to_align[ii,]) %>% 
                      mutate(pair = ii)
       pair <- rbind(pair,a)
-            
-      
     }
   }
+# exif$RigRelatives
+# exif$RigRelativesReferenceRigCameraIndex
+# exif$RigCameraIndex
+# 
+# exif<-exif_read(pair$Image_Path[4])
   
+}
+
+for(i in unique(pair$pair)){
   
-exif$RigRelatives
-  
-  }
+}
 
 ```
-

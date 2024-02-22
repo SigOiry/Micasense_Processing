@@ -878,7 +878,7 @@ The code below defines a Python function used the undistort images...
 
 import cv2
 
-def Un distort_Ref(path_in, path_out,cam_mat, dist_coeffs,w,h):
+def Undistort_Ref(path_in, path_out,cam_mat, dist_coeffs,w,h):
   new_cam_mat, _ = cv2.getOptimalNewCameraMatrix(cam_mat, dist_coeffs, (w, h), 1, (w, h))
   image = cv2.imread(path_in,cv2.IMREAD_UNCHANGED)
   image_corrige = cv2.undistort(image,cam_mat,dist_coeffs,None,new_cam_mat)
@@ -1162,6 +1162,7 @@ def get_homography(match, ref, R = None, T = None):
   CCr = np.zeros((4, 4))
   CCr[0:3, 0:3] = Cr
   CCr[3, 3] = 1.
+  
   B = np.array(np.dot(CCr, np.dot(A, np.linalg.inv(CC))))
   B[:, 2] = B[:, 2] - B[:, 3]
   B = B[0:3, 0:3]
@@ -1191,6 +1192,24 @@ def rig_xy_offset_in_px(meta):
 from skimage.filters import gaussian, rank
 from skimage.util import img_as_ubyte
 from skimage.morphology import disk
+
+def raw(self):
+  """ Lazy load the raw image once necessary """
+  if self.__raw_image is None:
+    try:
+      import rawpy
+      # to support 12-bit DNG files, otherwise we get "SIFT found no features" error
+      if self.bits_per_pixel == 12:
+        self.__raw_image = rawpy.imread(self.path).raw_image * 16
+      else:
+        self.__raw_image = rawpy.imread(self.path).raw_image
+    except ImportError:
+      self.__raw_image = cv2.imread(self.path, -1)
+    except IOError:
+      print(("Could not open image at path {}".format(self.path)))
+      raise
+  return self.__raw_image
+
 
 def normalize(im, local_min=None, local_max=None):
   width, height = im.shape
@@ -1232,6 +1251,7 @@ def align(pair,wrap_matrix):
   translations = np.float_(pair['translation'][0].split())
   wrap_matrix_match = wrap_matrix.copy()
   ref = cv2.imread(pair['ref_path'][0],cv2.IMREAD_UNCHANGED)
+  # ref = rawpy.imread('Dual_MX_Images/Blue/IMG_0002_10.tif')
   w = ref.shape[1]
   
   nol = int(w/(1280/3))-1
@@ -1348,9 +1368,10 @@ for( i in 1:length(unique(output$CaptureId))){
                                  ref_path = ref$SourceFile,
                                  match_index = capture$BandName[ii],
                                  match_path = capture$SourceFile[ii],
-                                 translation = translation)
+                                 translation = translation) %>% 
+      mutate(output_path = paste0("Output/aligned/", gsub(".*/","",match_path)))
     
-    py$align(alignment_pairs,wrap_matrice_img)
+    py$align(alignment_pairs)
     
   }
   
@@ -1362,6 +1383,41 @@ for( i in 1:length(unique(output$CaptureId))){
 
 
 
+```{python}
+
+
+def align(pairs): 
+  
+
+  ref = pairs["ref_path"][0]  
+  match = pairs["match_path"][0]
+  output = pairs["output_path"][0]
+
+  img_ref = cv2.imread(ref,cv2.IMREAD_UNCHANGED)
+  img_match = cv2.imread(match,cv2.IMREAD_UNCHANGED)
+  
+  
+  sz = img_ref.size
+  
+  warp_mode = cv2.MOTION_AFFINE
+  
+  warp_matrix = np.eye(2, 3, dtype=np.float32)
+  
+  number_of_iterations = 5000;
+  termination_eps = 1e-10;
+  
+  criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, number_of_iterations,  termination_eps)
+  
+  (cc, warp_matrix) = cv2.findTransformECC (img_ref,img_match,warp_matrix, warp_mode, criteria)
+  
+  # im2_aligned = cv2.warpPerspective (img_match, warp_matrix, (1290, 960), flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP) ## HOMOGRAPHY
+  
+  im2_aligned = cv2.warpAffine(img_match, warp_matrix, (1290, 960), flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP);
+   
+  cv2.imwrite(output, im2_aligned)
+
+
+```
 
 
 
